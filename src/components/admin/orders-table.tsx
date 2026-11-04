@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { StatusPicker } from './status-picker';
+import { PaymentBadge } from './payment-badge';
 import { getAdminT } from '@/lib/admin-i18n';
 import { uzsL } from '@/i18n/admin';
 import { formatDate } from '@/lib/format';
@@ -12,13 +13,14 @@ export async function OrdersTable({ orders }: { orders: Order[] }) {
   if (!orders.length) return <p className="px-5 pb-6 text-sm text-muted">{t.orders.empty}</p>;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] text-sm">
+      <table className="w-full min-w-[860px] text-sm">
         <thead className="border-y border-border bg-surface-2/50 text-left text-xs uppercase tracking-wider text-muted">
           <tr>
             <th className="px-5 py-3">{c.number}</th>
             <th className="px-5 py-3">{c.date}</th>
             <th className="px-5 py-3">{c.customer}</th>
             <th className="px-5 py-3">{c.status}</th>
+            <th className="px-5 py-3">{c.payment}</th>
             <th className="px-5 py-3 text-right">{c.total}</th>
           </tr>
         </thead>
@@ -39,6 +41,9 @@ export async function OrdersTable({ orders }: { orders: Order[] }) {
               </td>
               <td className="px-5 py-3">
                 <StatusPicker orderId={o.id} status={o.status} />
+              </td>
+              <td className="px-5 py-3">
+                <PaymentBadge method={o.payment_method} status={o.payment_status} t={t} />
               </td>
               <td className="whitespace-nowrap px-5 py-3 text-right font-semibold">{uzsL(o.total, locale)}</td>
             </tr>

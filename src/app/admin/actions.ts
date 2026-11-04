@@ -26,13 +26,20 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
   return { ok: true, message: sent ? (await msg()).statusUpdatedNotified : (await msg()).statusUpdated };
 }
 
-export async function updateOrderMeta(orderId: string, patch: { admin_note?: string; payment_status?: string }): Promise<Result> {
+export async function updateOrderMeta(
+  orderId: string,
+  patch: { admin_note?: string; payment_status?: string; payment_method?: string },
+): Promise<Result> {
   const { supabase } = await requireStaff();
   const allowed: Record<string, unknown> = {};
   if (typeof patch.admin_note === 'string') allowed.admin_note = patch.admin_note.slice(0, 2000);
   if (patch.payment_status && ['pending', 'paid', 'failed', 'refunded'].includes(patch.payment_status)) allowed.payment_status = patch.payment_status;
+  if (patch.payment_method && ['cash', 'card', 'click', 'payme', 'uzum', 'installment'].includes(patch.payment_method)) {
+    allowed.payment_method = patch.payment_method;
+  }
   const { error } = await supabase.from('orders').update(allowed).eq('id', orderId);
   if (error) return { ok: false, error: error.message };
+  revalidatePath('/admin/orders');
   revalidatePath(`/admin/orders/${orderId}`);
   return { ok: true };
 }

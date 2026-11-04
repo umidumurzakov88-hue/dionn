@@ -7,8 +7,11 @@ import { getAdminT } from '@/lib/admin-i18n';
 import { fmt, uzsL } from '@/i18n/admin';
 import { OrdersTable } from '@/components/admin/orders-table';
 import { STATUS_DOT } from '@/components/admin/status-colors';
+import { PAY_ICON } from '@/components/admin/payment-badge';
 import { Pagination, SearchBar } from '@/components/admin/search-bar';
-import { ORDER_STATUSES, type Order, type OrderStatus } from '@/lib/types';
+import { ORDER_STATUSES, type Order, type OrderStatus, type PaymentMethod } from '@/lib/types';
+
+const PAY_METHODS: PaymentMethod[] = ['cash', 'card', 'click', 'payme', 'uzum', 'installment'];
 
 export async function generateMetadata() {
   const { t } = await getAdminT();
@@ -19,16 +22,18 @@ const PER_PAGE = 25;
 export default async function OrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; page?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; pay?: string; page?: string; from?: string; to?: string }>;
 }) {
   const { supabase } = await requireStaff();
   const { t, locale } = await getAdminT();
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page) || 1);
   const status = ORDER_STATUSES.includes(sp.status as OrderStatus) ? (sp.status as OrderStatus) : null;
+  const pay = PAY_METHODS.includes(sp.pay as PaymentMethod) ? (sp.pay as PaymentMethod) : null;
 
   let q = supabase.from('orders').select('*', { count: 'exact' }).order('created_at', { ascending: false });
   if (status) q = q.eq('status', status);
+  if (pay) q = q.eq('payment_method', pay);
   if (sp.from) q = q.gte('created_at', `${sp.from}T00:00:00+05:00`);
   if (sp.to) q = q.lte('created_at', `${sp.to}T23:59:59+05:00`);
   if (sp.q) {
@@ -42,9 +47,11 @@ export default async function OrdersPage({
   }
   const [{ data, count }, { data: allStatuses }] = await Promise.all([
     q.range((page - 1) * PER_PAGE, page * PER_PAGE - 1),
-    supabase.from('orders').select('status'),
+    supabase.from('orders').select('status, payment_method'),
   ]);
   const byStatus = (s: OrderStatus) => (allStatuses ?? []).filter((o) => o.status === s).length;
+  const byPay = (m: PaymentMethod) => (allStatuses ?? []).filter((o) => o.payment_method === m).length;
+  const payTabs = PAY_METHODS.filter((m) => byPay(m) > 0 || m === pay || m === 'cash' || m === 'card');
   const orders = (data as Order[]) ?? [];
   const pageSum = orders.filter((o) => o.status !== 'cancelled').reduce((a, o) => a + Number(o.total), 0);
 
@@ -76,6 +83,7 @@ export default async function OrdersPage({
         </Suspense>
         <form className="flex items-center gap-2 text-sm">
           {status && <input type="hidden" name="status" value={status} />}
+          {pay && <input type="hidden" name="pay" value={pay} />}
           {sp.q && <input type="hidden" name="q" value={sp.q} />}
           <input type="date" name="from" defaultValue={sp.from} aria-label={t.orders.dateFrom} title={t.orders.dateFrom} className="input h-10 w-auto py-0" />
           <span className="text-muted">—</span>
@@ -100,6 +108,27 @@ export default async function OrdersPage({
             <span className="opacity-60">{byStatus(s)}</span>
           </Link>
         ))}
+      </div>
+
+      <div className="no-scrollbar mb-4 flex items-center gap-2 overflow-x-auto text-sm">
+        <span className="shrink-0 pr-1 text-xs font-semibold uppercase tracking-wider text-muted">{t.orders.payFilter}:</span>
+        <Link href={`/admin/orders${qs({ pay: null })}`} className={`chip shrink-0 gap-2 px-3.5 py-1.5 transition hover:-translate-y-0.5 ${!pay ? 'bg-primary text-primary-fg' : 'bg-surface-2'}`}>
+          {t.common.all}
+        </Link>
+        {payTabs.map((m) => {
+          const Icon = PAY_ICON[m];
+          return (
+            <Link
+              key={m}
+              href={`/admin/orders${qs({ pay: m })}`}
+              className={`chip shrink-0 gap-2 px-3.5 py-1.5 transition hover:-translate-y-0.5 ${pay === m ? 'bg-primary text-primary-fg' : 'bg-surface-2'}`}
+            >
+              <Icon className="size-4" />
+              {t.payment[m]}
+              <span className="opacity-60">{byPay(m)}</span>
+            </Link>
+          );
+        })}
       </div>
 
       <div className="card overflow-hidden">

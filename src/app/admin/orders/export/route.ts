@@ -15,6 +15,8 @@ export async function GET(req: NextRequest) {
   let q = staff.supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false }).limit(5000);
   const status = sp.get('status');
   if (status && ORDER_STATUSES.includes(status as OrderStatus)) q = q.eq('status', status);
+  const pay = sp.get('pay');
+  if (pay && /^[a-z]+$/.test(pay)) q = q.eq('payment_method', pay);
   if (sp.get('from')) q = q.gte('created_at', `${sp.get('from')}T00:00:00+05:00`);
   if (sp.get('to')) q = q.lte('created_at', `${sp.get('to')}T23:59:59+05:00`);
   const { data } = await q;

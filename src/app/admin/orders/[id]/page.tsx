@@ -152,7 +152,7 @@ export default async function OrderDetail({ params }: { params: Promise<{ id: st
 
         <aside className="space-y-6">
           <section className="card p-5">
-            <OrderControls id={o.id} status={o.status} paymentStatus={o.payment_status} note={o.admin_note ?? ''} isAdmin={profile.role === 'admin'} />
+            <OrderControls id={o.id} status={o.status} paymentStatus={o.payment_status} paymentMethod={o.payment_method} note={o.admin_note ?? ''} isAdmin={profile.role === 'admin'} />
           </section>
           <section className="card p-5">
             <h2 className="mb-3 font-bold">{d.history}</h2>
