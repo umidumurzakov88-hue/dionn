@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/admin/ui';
 import { getAdminT } from '@/lib/admin-i18n';
 import { fmt, uzsL } from '@/i18n/admin';
 import { OrdersTable } from '@/components/admin/orders-table';
+import { STATUS_DOT } from '@/components/admin/status-colors';
 import { Pagination, SearchBar } from '@/components/admin/search-bar';
 import { ORDER_STATUSES, type Order, type OrderStatus } from '@/lib/types';
 
@@ -39,7 +40,11 @@ export default async function OrdersPage({
     if (num && digits.length <= 9) ors.push(`number.eq.${num}`);
     q = q.or(ors.join(','));
   }
-  const { data, count } = await q.range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
+  const [{ data, count }, { data: allStatuses }] = await Promise.all([
+    q.range((page - 1) * PER_PAGE, page * PER_PAGE - 1),
+    supabase.from('orders').select('status'),
+  ]);
+  const byStatus = (s: OrderStatus) => (allStatuses ?? []).filter((o) => o.status === s).length;
   const orders = (data as Order[]) ?? [];
   const pageSum = orders.filter((o) => o.status !== 'cancelled').reduce((a, o) => a + Number(o.total), 0);
 
@@ -80,12 +85,19 @@ export default async function OrdersPage({
       </div>
 
       <div className="no-scrollbar mb-4 flex gap-2 overflow-x-auto">
-        <Link href={`/admin/orders${qs({ status: null })}`} className={`chip shrink-0 px-4 py-2 ${!status ? 'bg-primary text-primary-fg' : 'bg-surface-2'}`}>
+        <Link href={`/admin/orders${qs({ status: null })}`} className={`chip shrink-0 gap-2 px-4 py-2 transition hover:-translate-y-0.5 ${!status ? 'bg-primary text-primary-fg' : 'bg-surface-2'}`}>
           {t.common.all}
+          <span className="opacity-60">{allStatuses?.length ?? 0}</span>
         </Link>
         {ORDER_STATUSES.map((s) => (
-          <Link key={s} href={`/admin/orders${qs({ status: s })}`} className={`chip shrink-0 px-4 py-2 ${status === s ? 'bg-primary text-primary-fg' : 'bg-surface-2'}`}>
+          <Link
+            key={s}
+            href={`/admin/orders${qs({ status: s })}`}
+            className={`chip shrink-0 gap-2 px-4 py-2 transition hover:-translate-y-0.5 ${status === s ? 'bg-primary text-primary-fg' : 'bg-surface-2'}`}
+          >
+            <span className={`size-2 rounded-full ${STATUS_DOT[s]}`} />
             {t.status[s]}
+            <span className="opacity-60">{byStatus(s)}</span>
           </Link>
         ))}
       </div>

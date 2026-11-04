@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { StatusBadge } from './ui';
+import { StatusPicker } from './status-picker';
 import { getAdminT } from '@/lib/admin-i18n';
 import { uzsL } from '@/i18n/admin';
 import { formatDate } from '@/lib/format';
@@ -38,7 +38,7 @@ export async function OrdersTable({ orders }: { orders: Order[] }) {
                 </Link>
               </td>
               <td className="px-5 py-3">
-                <StatusBadge status={o.status} />
+                <StatusPicker orderId={o.id} status={o.status} />
               </td>
               <td className="whitespace-nowrap px-5 py-3 text-right font-semibold">{uzsL(o.total, locale)}</td>
             </tr>
