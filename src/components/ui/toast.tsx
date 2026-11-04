@@ -28,7 +28,7 @@ export function Toaster() {
       {items.map((t) => (
         <div
           key={t.id}
-          className="animate-fade-in pointer-events-auto flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-fg shadow-xl"
+          className="animate-toast pointer-events-auto flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-fg shadow-xl"
         >
           {t.kind === 'ok' ? <CheckCircle2 className="size-4 text-success" /> : <XCircle className="size-4 text-danger" />}
           {t.text}

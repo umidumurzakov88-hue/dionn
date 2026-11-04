@@ -28,14 +28,14 @@ import { CallbackModal } from '@/components/shop/callback-modal';
 function Badge({ n }: { n: number }) {
   if (!n) return null;
   return (
-    <span className="absolute -right-1 -top-1 grid min-w-[18px] place-items-center rounded-full bg-accent px-1 text-[10px] font-bold leading-[18px] text-white">
+    <span key={n} className="animate-pop absolute -right-1 -top-1 grid min-w-[18px] place-items-center rounded-full bg-accent px-1 text-[10px] font-bold leading-[18px] text-white">
       {n > 99 ? '99+' : n}
     </span>
   );
 }
 
-export function Header({ categories, isLoggedIn }: { categories: Category[]; isLoggedIn: boolean }) {
-  const { t, locale, contacts } = useI18n();
+export function Header({ categories }: { categories: Category[] }) {
+  const { t, locale, contacts, loggedIn: isLoggedIn } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
   const hydrated = useHydrated();
@@ -127,7 +127,7 @@ export function Header({ categories, isLoggedIn }: { categories: Category[]; isL
             {t.common.catalog}
           </button>
           {catalogOpen && roots.length > 0 && (
-            <div className="animate-fade-in absolute left-0 top-full mt-3 flex w-[760px] overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
+            <div className="animate-scale-in origin-top-left absolute left-0 top-full mt-3 flex w-[760px] overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
               <ul className="w-64 shrink-0 border-r border-border p-2">
                 {roots.map((c) => (
                   <li key={c.id}>
@@ -216,9 +216,9 @@ export function Header({ categories, isLoggedIn }: { categories: Category[]; isL
       {/* Mobile drawer (portal: the header's backdrop-blur would clip a fixed overlay to the header) */}
       {mobileOpen &&
         createPortal(
-        <div className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-[2px] md:hidden" onClick={() => setMobileOpen(false)}>
+        <div className="animate-backdrop fixed inset-0 z-[80] bg-black/50 backdrop-blur-[2px] md:hidden" onClick={() => setMobileOpen(false)}>
           <aside
-            className="animate-fade-in flex h-full w-[86%] max-w-sm flex-col overflow-y-auto bg-bg p-5"
+            className="animate-slide-in-left flex h-full w-[86%] max-w-sm flex-col overflow-y-auto bg-bg p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">

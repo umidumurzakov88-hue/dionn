@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { updateSession } from '@/lib/supabase/proxy';
+import { hasAuthCookie, updateSession } from '@/lib/supabase/proxy';
 import { defaultLocale, isLocale } from '@/i18n/config';
 
 export async function proxy(request: NextRequest) {
@@ -32,7 +32,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const { response } = await updateSession(request, NextResponse.next({ request }));
+  // Anonymous visitors have no session to refresh → skip the Supabase call entirely.
+  const response = hasAuthCookie(request)
+    ? (await updateSession(request, NextResponse.next({ request }))).response
+    : NextResponse.next({ request });
   if (request.cookies.get('NEXT_LOCALE')?.value !== first) {
     response.cookies.set('NEXT_LOCALE', first, { path: '/', maxAge: 60 * 60 * 24 * 365 });
   }

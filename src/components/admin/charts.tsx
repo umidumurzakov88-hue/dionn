@@ -1,6 +1,7 @@
 'use client';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { compactUzs, uzs } from './ui';
+import { useAdminT } from '@/i18n/admin/provider';
+import { fmt, intlLocale, uzsL } from '@/i18n/admin';
 
 export interface DayPoint {
   day: string;
@@ -11,14 +12,15 @@ export interface DayPoint {
 const tick = { fill: 'var(--muted)', fontSize: 12 };
 
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number; dataKey: string }[]; label?: string }) {
+  const { t, locale } = useAdminT();
   if (!active || !payload?.length) return null;
   const d = new Date(label + 'T00:00:00');
   return (
     <div className="rounded-xl border border-border bg-surface px-3 py-2 text-xs shadow-lg">
-      <p className="mb-1 font-semibold">{d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</p>
+      <p className="mb-1 font-semibold">{d.toLocaleDateString(intlLocale(locale), { day: 'numeric', month: 'long' })}</p>
       {payload.map((p) => (
         <p key={p.dataKey} className="text-muted">
-          {p.dataKey === 'revenue' ? `Выручка: ${uzs(p.value)}` : `Заказов: ${p.value}`}
+          {p.dataKey === 'revenue' ? fmt(t.orders.chart.revenue, { v: uzsL(p.value, locale) }) : fmt(t.orders.chart.orders, { n: p.value })}
         </p>
       ))}
     </div>
@@ -31,6 +33,14 @@ const shortDate = (v: string) => {
 };
 
 export function RevenueChart({ data }: { data: DayPoint[] }) {
+  const { t } = useAdminT();
+  const compact = (v: number) => {
+    const c = t.common;
+    if (v >= 1e9) return `${(v / 1e9).toFixed(1).replace('.0', '')} ${c.billion}`;
+    if (v >= 1e6) return `${(v / 1e6).toFixed(1).replace('.0', '')} ${c.million}`;
+    if (v >= 1e3) return `${Math.round(v / 1e3)} ${c.thousand}`;
+    return String(Math.round(v));
+  };
   return (
     <ResponsiveContainer width="100%" height={280}>
       <AreaChart data={data} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
@@ -42,7 +52,7 @@ export function RevenueChart({ data }: { data: DayPoint[] }) {
         </defs>
         <CartesianGrid vertical={false} stroke="var(--border)" />
         <XAxis dataKey="day" tickFormatter={shortDate} tick={tick} axisLine={false} tickLine={false} minTickGap={24} />
-        <YAxis tickFormatter={compactUzs} tick={tick} axisLine={false} tickLine={false} width={56} />
+        <YAxis tickFormatter={compact} tick={tick} axisLine={false} tickLine={false} width={56} />
         <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'var(--border)' }} />
         <Area type="monotone" dataKey="revenue" stroke="var(--accent)" strokeWidth={2.5} fill="url(#rev)" />
       </AreaChart>

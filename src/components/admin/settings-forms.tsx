@@ -3,9 +3,12 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { saveSetting, telegramSetWebhook, telegramTest } from '@/app/admin/actions';
 import { toast } from '@/components/ui/toast';
+import { useAdminT } from '@/i18n/admin/provider';
+import type { AdminDict } from '@/i18n/admin';
 import type { Contacts } from '@/lib/types';
 
 export function UsdRateForm({ rate }: { rate: number }) {
+  const { t } = useAdminT();
   const router = useRouter();
   const [v, setV] = useState(String(rate));
   const [pending, start] = useTransition();
@@ -14,10 +17,10 @@ export function UsdRateForm({ rate }: { rate: number }) {
       onSubmit={(e) => {
         e.preventDefault();
         const n = Number(v.replace(/\s/g, ''));
-        if (!(n > 0)) return toast.error('Введите курс');
+        if (!(n > 0)) return toast.error(t.settings.enterRate);
         start(async () => {
           const r = await saveSetting('usd_rate', n);
-          if (r.ok) toast.ok('Курс сохранён');
+          if (r.ok) toast.ok(t.settings.rateSaved);
           else toast.error(r.error);
           router.refresh();
         });
@@ -26,31 +29,34 @@ export function UsdRateForm({ rate }: { rate: number }) {
     >
       <div className="relative flex-1">
         <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-muted">1 $ =</span>
-        <input value={v} onChange={(e) => setV(e.target.value)} inputMode="numeric" className="input pl-14" />
+        <input value={v} onChange={(e) => setV(e.target.value)} inputMode="numeric" aria-label={t.settings.usdRate} className="input pl-14" />
       </div>
       <button disabled={pending} className="btn-primary">
-        Сохранить
+        {t.common.save}
       </button>
     </form>
   );
 }
 
-const CONTACT_FIELDS: { key: keyof Contacts; label: string; half?: boolean }[] = [
-  { key: 'phone', label: 'Телефон (как показывать)', half: true },
-  { key: 'phone_raw', label: 'Телефон для звонка (+998…)', half: true },
-  { key: 'hours_ru', label: 'Часы работы (RU)' },
-  { key: 'hours_uz', label: 'Ish vaqti (UZ)', half: true },
-  { key: 'hours_en', label: 'Working hours (EN)', half: true },
-  { key: 'address_ru', label: 'Адрес шоурума (RU)' },
-  { key: 'address_uz', label: 'Manzil (UZ)', half: true },
-  { key: 'address_en', label: 'Address (EN)', half: true },
-  { key: 'telegram', label: 'Telegram (ссылка)', half: true },
-  { key: 'instagram', label: 'Instagram (ссылка)', half: true },
-  { key: 'facebook', label: 'Facebook (ссылка)', half: true },
-  { key: 'youtube', label: 'YouTube (ссылка)', half: true },
+type ContactField = keyof Contacts & keyof AdminDict['settings']['fields'];
+
+const CONTACT_FIELDS: { key: ContactField; half?: boolean }[] = [
+  { key: 'phone', half: true },
+  { key: 'phone_raw', half: true },
+  { key: 'hours_ru' },
+  { key: 'hours_uz', half: true },
+  { key: 'hours_en', half: true },
+  { key: 'address_ru' },
+  { key: 'address_uz', half: true },
+  { key: 'address_en', half: true },
+  { key: 'telegram', half: true },
+  { key: 'instagram', half: true },
+  { key: 'facebook', half: true },
+  { key: 'youtube', half: true },
 ];
 
 export function ContactsForm({ contacts }: { contacts: Contacts }) {
+  const { t } = useAdminT();
   const router = useRouter();
   const [c, setC] = useState(contacts);
   const [pending, start] = useTransition();
@@ -60,7 +66,7 @@ export function ContactsForm({ contacts }: { contacts: Contacts }) {
         e.preventDefault();
         start(async () => {
           const r = await saveSetting('contacts', c);
-          if (r.ok) toast.ok('Контакты сохранены');
+          if (r.ok) toast.ok(t.settings.contactsSaved);
           else toast.error(r.error);
           router.refresh();
         });
@@ -69,13 +75,13 @@ export function ContactsForm({ contacts }: { contacts: Contacts }) {
     >
       {CONTACT_FIELDS.map((f) => (
         <div key={f.key} className={f.half ? '' : 'sm:col-span-2'}>
-          <label className="label">{f.label}</label>
+          <label className="label">{t.settings.fields[f.key]}</label>
           <input value={c[f.key] ?? ''} onChange={(e) => setC({ ...c, [f.key]: e.target.value })} className="input" />
         </div>
       ))}
       <div className="sm:col-span-2">
         <button disabled={pending} className="btn-primary">
-          Сохранить контакты
+          {t.settings.saveContacts}
         </button>
       </div>
     </form>
@@ -83,20 +89,21 @@ export function ContactsForm({ contacts }: { contacts: Contacts }) {
 }
 
 export function TelegramButtons() {
+  const { t } = useAdminT();
   const [pending, start] = useTransition();
   const run = (fn: () => Promise<{ ok: boolean; message?: string; error?: string }>) =>
     start(async () => {
       const r = await fn();
-      if (r.ok) toast.ok(r.message ?? 'Готово');
-      else toast.error(r.error ?? 'Ошибка');
+      if (r.ok) toast.ok(r.message ?? t.settings.done);
+      else toast.error(r.error ?? t.common.error);
     });
   return (
     <div className="flex flex-wrap gap-2">
       <button disabled={pending} onClick={() => run(telegramTest)} className="btn-outline">
-        Отправить тестовое сообщение
+        {t.settings.sendTest}
       </button>
       <button disabled={pending} onClick={() => run(telegramSetWebhook)} className="btn-outline">
-        Подключить webhook
+        {t.settings.connectWebhook}
       </button>
     </div>
   );

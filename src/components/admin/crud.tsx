@@ -6,6 +6,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { toast } from '@/components/ui/toast';
 import { deleteRow, saveRow } from '@/app/admin/actions';
+import { useAdminT } from '@/i18n/admin/provider';
 import { ImagesInput } from './image-upload';
 
 type Row = Record<string, unknown>;
@@ -31,7 +32,7 @@ export function CrudTable({
   defaults,
   keyField = 'id',
   title,
-  addLabel = 'Добавить',
+  addLabel,
   display,
 }: {
   table: 'categories' | 'banners' | 'promo_codes';
@@ -45,6 +46,8 @@ export function CrudTable({
   /** Pre-rendered display values: display[rowKey][columnKey] */
   display?: Record<string, Record<string, string>>;
 }) {
+  const { t } = useAdminT();
+  const T = t.catalog.crud;
   const router = useRouter();
   const [editing, setEditing] = useState<Row | null>(null);
   const [isNew, setIsNew] = useState(false);
@@ -68,18 +71,18 @@ export function CrudTable({
       }
       const r = await saveRow(table, payload, keyField);
       if (!r.ok) return toast.error(r.error);
-      toast.ok('Сохранено');
+      toast.ok(t.common.saved);
       setEditing(null);
       router.refresh();
     });
   };
 
   const remove = (row: Row) => {
-    if (!confirm('Удалить запись?')) return;
+    if (!confirm(T.confirmDeleteRow)) return;
     start(async () => {
       const r = await deleteRow(table, String(row[keyField]), keyField);
       if (!r.ok) return toast.error(r.error);
-      toast.ok('Удалено');
+      toast.ok(T.deleted);
       router.refresh();
     });
   };
@@ -91,7 +94,7 @@ export function CrudTable({
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{title}</h1>
         <button onClick={() => open(null)} className="btn-primary h-10 py-0">
-          <Plus className="size-4" /> {addLabel}
+          <Plus className="size-4" /> {addLabel ?? t.common.add}
         </button>
       </div>
 
@@ -122,7 +125,7 @@ export function CrudTable({
                               {typeof v === 'string' && v && <Image src={v} alt="" fill sizes="64px" className="object-cover" />}
                             </span>
                           ) : c.kind === 'bool' ? (
-                            <span className={`chip ${v ? 'bg-success/15 text-success' : 'bg-surface-2 text-muted'}`}>{v ? 'Да' : 'Нет'}</span>
+                            <span className={`chip ${v ? 'bg-success/15 text-success' : 'bg-surface-2 text-muted'}`}>{v ? t.common.yes : t.common.no}</span>
                           ) : (
                             <span>{v == null || v === '' ? '—' : String(v)}</span>
                           )}
@@ -131,10 +134,10 @@ export function CrudTable({
                     })}
                     <td className="px-5 py-3">
                       <div className="flex justify-end gap-1">
-                        <button onClick={() => open(row)} className="rounded-lg p-2 hover:bg-surface-2" aria-label="edit">
+                        <button onClick={() => open(row)} className="rounded-lg p-2 hover:bg-surface-2" aria-label={t.common.edit}>
                           <Pencil className="size-4" />
                         </button>
-                        <button onClick={() => remove(row)} disabled={pending} className="rounded-lg p-2 text-danger hover:bg-surface-2" aria-label="delete">
+                        <button onClick={() => remove(row)} disabled={pending} className="rounded-lg p-2 text-danger hover:bg-surface-2" aria-label={t.common.delete}>
                           <Trash2 className="size-4" />
                         </button>
                       </div>
@@ -145,7 +148,7 @@ export function CrudTable({
               {!rows.length && (
                 <tr>
                   <td colSpan={columns.length + 1} className="px-5 py-12 text-center text-muted">
-                    Пока пусто
+                    {T.empty}
                   </td>
                 </tr>
               )}
@@ -154,12 +157,12 @@ export function CrudTable({
         </div>
       </div>
 
-      <Modal open={!!editing} onClose={() => setEditing(null)} title={isNew ? addLabel : 'Редактирование'} wide>
+      <Modal open={!!editing} onClose={() => setEditing(null)} title={isNew ? (addLabel ?? t.common.add) : T.editing} wide>
         {editing && (
-          <form onSubmit={save} className="grid gap-4 sm:grid-cols-2">
+          <form onSubmit={save} className="grid animate-scale-in gap-4 sm:grid-cols-2">
             {keyField !== 'id' && (
               <div className="sm:col-span-2">
-                <label className="label">Код *</label>
+                <label className="label">{T.code} *</label>
                 <input
                   value={String(editing[keyField] ?? '')}
                   disabled={!isNew}
@@ -228,10 +231,10 @@ export function CrudTable({
             })}
             <div className="flex justify-end gap-2 sm:col-span-2">
               <button type="button" onClick={() => setEditing(null)} className="btn-outline">
-                Отмена
+                {t.common.cancel}
               </button>
               <button disabled={pending} className="btn-primary">
-                {pending ? 'Сохраняем…' : 'Сохранить'}
+                {pending ? T.saving : t.common.save}
               </button>
             </div>
           </form>

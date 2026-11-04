@@ -3,17 +3,24 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { Plus } from 'lucide-react';
 import { requireStaff } from '@/lib/admin-auth';
-import { PageHeader, uzs } from '@/components/admin/ui';
+import { getAdminT } from '@/lib/admin-i18n';
+import { fmt, uzsL } from '@/i18n/admin';
+import { PageHeader } from '@/components/admin/ui';
 import { Pagination, SearchBar } from '@/components/admin/search-bar';
 import { ActiveToggle } from '@/components/admin/active-toggle';
 import type { Category, Product } from '@/lib/types';
 
-export const metadata = { title: 'Товары' };
+export async function generateMetadata() {
+  const { t } = await getAdminT();
+  return { title: t.products.title };
+}
 const PER_PAGE = 30;
-const STOCK: Record<string, string> = { in_stock: 'В наличии', preorder: 'Предзаказ', out_of_stock: 'Нет' };
 
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; category?: string }> }) {
-  const { supabase } = await requireStaff();
+  const [{ supabase }, { t, locale }] = await Promise.all([requireStaff(), getAdminT()]);
+  const tp = t.products;
+  const uzs = (v: number | string | null | undefined) => uzsL(v, locale);
+  const STOCK: Record<string, string> = tp.stockShort;
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page) || 1);
 
@@ -34,19 +41,19 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <PageHeader title="Товары" subtitle={`Всего: ${count ?? 0}`}>
+      <PageHeader title={tp.title} subtitle={fmt(tp.total, { n: count ?? 0 })}>
         <Link href="/admin/products/new" className="btn-primary h-10 py-0">
-          <Plus className="size-4" /> Добавить товар
+          <Plus className="size-4" /> {tp.addProduct}
         </Link>
       </PageHeader>
       <div className="mb-4 flex flex-wrap gap-3">
         <Suspense>
-          <SearchBar placeholder="Название или артикул…" />
+          <SearchBar placeholder={tp.searchPlaceholder} />
         </Suspense>
         <form className="flex gap-2">
           {sp.q && <input type="hidden" name="q" value={sp.q} />}
           <select name="category" defaultValue={sp.category ?? ''} className="input h-10 w-auto py-0">
-            <option value="">Все категории</option>
+            <option value="">{tp.allCategories}</option>
             {((cats as Category[]) ?? []).map((c) => (
               <option key={c.id} value={c.id}>
                 {c.parent_id ? '— ' : ''}
@@ -54,7 +61,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               </option>
             ))}
           </select>
-          <button className="btn-outline h-10 py-0">OK</button>
+          <button className="btn-outline h-10 py-0">{tp.apply}</button>
         </form>
       </div>
 
@@ -63,16 +70,16 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
           <table className="w-full min-w-[820px] text-sm">
             <thead className="border-b border-border bg-surface-2/50 text-left text-xs uppercase tracking-wider text-muted">
               <tr>
-                <th className="px-5 py-3">Товар</th>
-                <th className="px-5 py-3">Категория</th>
-                <th className="px-5 py-3">Наличие</th>
-                <th className="px-5 py-3 text-right">Цена</th>
-                <th className="px-5 py-3 text-center">На сайте</th>
+                <th className="px-5 py-3">{tp.col.product}</th>
+                <th className="px-5 py-3">{tp.col.category}</th>
+                <th className="px-5 py-3">{tp.col.stock}</th>
+                <th className="px-5 py-3 text-right">{tp.col.price}</th>
+                <th className="px-5 py-3 text-center">{tp.col.onSite}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {products.map((p) => (
-                <tr key={p.id} className="hover:bg-surface-2/60">
+              {products.map((p, i) => (
+                <tr key={p.id} className="animate-stagger-item hover:bg-surface-2/60" style={{ '--i': Math.min(i, 12) } as React.CSSProperties}>
                   <td className="px-5 py-3">
                     <Link href={`/admin/products/${p.id}`} className="flex items-center gap-3">
                       <span className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-surface-2">
@@ -82,10 +89,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         <span className="line-clamp-1 font-semibold hover:text-accent">{p.name_ru}</span>
                         <span className="flex gap-1.5 text-xs text-muted">
                           {p.sku && <span>{p.sku}</span>}
-                          {!!p.product_variants?.length && <span>· {p.product_variants.length} вар.</span>}
-                          {p.is_new && <span className="text-accent">· New</span>}
-                          {p.is_hit && <span className="text-accent">· Хит</span>}
-                          {(!p.name_uz || !p.name_en) && <span className="text-warning">· нет перевода</span>}
+                          {!!p.product_variants?.length && <span>· {p.product_variants.length} {tp.variantsShort}</span>}
+                          {p.is_new && <span className="text-accent">· {tp.badgeNew}</span>}
+                          {p.is_hit && <span className="text-accent">· {tp.badgeHit}</span>}
+                          {(!p.name_uz || !p.name_en) && <span className="text-warning">· {tp.noTranslation}</span>}
                         </span>
                       </span>
                     </Link>
@@ -104,7 +111,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               {!products.length && (
                 <tr>
                   <td colSpan={5} className="px-5 py-12 text-center text-muted">
-                    Товаров не найдено
+                    {tp.empty}
                   </td>
                 </tr>
               )}

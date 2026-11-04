@@ -1,8 +1,10 @@
 'use client';
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import type { Dict } from './ru';
 import type { Contacts, Locale } from '@/lib/types';
 import { getDict } from './config';
+import { createClient } from '@/lib/supabase/client';
 
 interface Ctx {
   locale: Locale;
@@ -18,9 +20,23 @@ export function I18nProvider({
   locale,
   usdRate,
   contacts,
-  loggedIn,
   children,
-}: Omit<Ctx, 't'> & { children: React.ReactNode }) {
+}: Omit<Ctx, 't' | 'loggedIn'> & { children: React.ReactNode }) {
+  // Login state is read in the browser (from the session cookie, no network call)
+  // so the server-rendered storefront stays the same for everyone and can be cached.
+  const [loggedIn, setLoggedIn] = useState(false);
+  const pathname = usePathname();
+  useEffect(() => {
+    const auth = createClient().auth;
+    auth.getSession().then(({ data }) => setLoggedIn(!!data.session));
+    const { data } = auth.onAuthStateChange((_e, session) => setLoggedIn(!!session));
+    return () => data.subscription.unsubscribe();
+  }, []);
+  // Server-side logins (Telegram, OAuth callback) only set cookies — re-check after navigation.
+  useEffect(() => {
+    createClient().auth.getSession().then(({ data }) => setLoggedIn(!!data.session));
+  }, [pathname]);
+
   return (
     <I18nContext.Provider value={{ locale, t: getDict(locale), usdRate, contacts, loggedIn }}>{children}</I18nContext.Provider>
   );

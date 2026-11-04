@@ -12,6 +12,11 @@ import { formatDate } from '@/lib/format';
 
 type Params = Promise<{ locale: string; slug: string }>;
 
+// Empty list → each product page is rendered on first visit, then served from cache (ISR).
+export async function generateStaticParams() {
+  return [];
+}
+
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { locale: l, slug } = await params;
   const locale = (isLocale(l) ? l : 'ru') as Locale;

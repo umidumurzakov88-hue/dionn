@@ -40,9 +40,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
       <section className="container-x mt-6">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {advantages.map(({ icon: Icon, title }) => (
-            <div key={title} className="card flex items-center gap-3 p-4">
-              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent">
+          {advantages.map(({ icon: Icon, title }, k) => (
+            <div key={title} data-reveal style={{ '--i': k } as React.CSSProperties} className="group card hover-lift flex items-center gap-3 p-4 hover:border-accent/40">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent transition duration-500 group-hover:rotate-6">
                 <Icon className="size-5" />
               </span>
               <span className="text-sm font-semibold leading-tight">{title}</span>
@@ -53,11 +53,13 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
       {roots.length > 0 && (
         <section className="container-x mt-16">
-          <h2 className="section-title mb-6">{t.home.categories}</h2>
+          <h2 data-reveal className="section-title mb-6">{t.home.categories}</h2>
           <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-4">
             {roots.map((c, idx) => (
               <Link
                 key={c.id}
+                data-reveal="scale"
+                style={{ '--i': idx % 4 } as React.CSSProperties}
                 href={L(`/catalog?category=${c.slug}`)}
                 // Make the first few tiles double-width so the grid always fills complete rows of 4.
                 className={`group relative h-44 overflow-hidden rounded-2xl bg-surface-2 sm:h-60 ${
@@ -70,11 +72,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                     alt=""
                     fill
                     sizes="(max-width:768px) 50vw, 25vw"
-                    className="object-cover transition duration-500 group-hover:scale-105"
+                    className="object-cover transition duration-700 ease-out group-hover:scale-110"
                   />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent" />
-                <span className="absolute bottom-4 left-4 right-4 text-base font-bold text-white sm:text-lg">{tr(c, 'name', locale)}</span>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent transition-opacity duration-500 group-hover:opacity-80" />
+                <span className="absolute bottom-4 left-4 right-4 text-base font-bold text-white transition-transform duration-500 group-hover:-translate-y-1 sm:text-lg">{tr(c, 'name', locale)}</span>
               </Link>
             ))}
           </div>
@@ -86,31 +88,31 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <ProductRail title={t.home.sale} href={L('/catalog?sale=1')} linkLabel={t.common.showAll} products={sale} />
 
       <section className="container-x mt-20">
-        <div className="grid overflow-hidden rounded-3xl bg-primary text-primary-fg lg:grid-cols-2">
+        <div data-reveal className="grid overflow-hidden rounded-3xl bg-primary text-primary-fg lg:grid-cols-2">
           <div className="p-8 sm:p-12">
-            <h2 className="section-title">{t.home.whyUs}</h2>
+            <h2 data-reveal="left" className="section-title">{t.home.whyUs}</h2>
             <div className="mt-8 grid gap-6 sm:grid-cols-2">
-              {advantages.map(({ icon: Icon, title, text }) => (
-                <div key={title}>
-                  <Icon className="size-7 text-accent" />
+              {advantages.map(({ icon: Icon, title, text }, k) => (
+                <div key={title} data-reveal style={{ '--i': k + 1 } as React.CSSProperties} className="group">
+                  <Icon className="size-7 text-accent transition-transform duration-500 group-hover:-translate-y-1 group-hover:scale-110" />
                   <h3 className="mt-3 font-bold">{title}</h3>
                   <p className="mt-1 text-sm opacity-70">{text}</p>
                 </div>
               ))}
             </div>
           </div>
-          <div className="relative min-h-[280px]">
-            <Image src="/demo/banner-sideboard.jpg" alt="" fill sizes="(max-width:1024px) 100vw, 50vw" className="object-cover" />
+          <div className="group relative min-h-[280px] overflow-hidden">
+            <Image src="/demo/banner-sideboard.jpg" alt="" fill sizes="(max-width:1024px) 100vw, 50vw" className="object-cover transition duration-[1.5s] ease-out group-hover:scale-105" />
           </div>
         </div>
       </section>
 
       {reviews.length > 0 && (
         <section className="container-x mt-20">
-          <h2 className="section-title mb-6">{t.home.reviews}</h2>
+          <h2 data-reveal className="section-title mb-6">{t.home.reviews}</h2>
           <div className="no-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 sm:mx-0 sm:grid sm:grid-cols-3 sm:px-0">
-            {reviews.map((r) => (
-              <figure key={r.id} className="card w-[80%] shrink-0 snap-start p-6 sm:w-auto">
+            {reviews.map((r, k) => (
+              <figure key={r.id} data-reveal style={{ '--i': k % 3 } as React.CSSProperties} className="card hover-lift w-[80%] shrink-0 snap-start p-6 hover:shadow-xl hover:shadow-black/5 sm:w-auto">
                 <div className="flex gap-0.5 text-accent">
                   {Array.from({ length: 5 }).map((_, k) => (
                     <Star key={k} className={`size-4 ${k < r.rating ? 'fill-current' : 'opacity-30'}`} />
@@ -128,8 +130,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       )}
 
       <section className="container-x mt-20">
-        <div className="card grid items-center gap-8 p-8 sm:p-12 lg:grid-cols-[1fr_1.2fr]">
-          <Image src="/brand/logo.png" alt="Dionn" width={510} height={175} className="logo-ink h-auto w-full max-w-sm" />
+        <div data-reveal className="card grid items-center gap-8 p-8 sm:p-12 lg:grid-cols-[1fr_1.2fr]">
+          <Image src="/brand/logo.png" alt="Dionn" width={510} height={175} className="logo-ink animate-float h-auto w-full max-w-sm" />
           <div>
             <h2 className="section-title">{t.home.aboutTitle}</h2>
             <p className="mt-4 leading-relaxed text-muted">{t.home.aboutText}</p>

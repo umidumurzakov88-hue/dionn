@@ -3,11 +3,16 @@ import { requireStaff } from '@/lib/admin-auth';
 import { Empty, PageHeader } from '@/components/admin/ui';
 import { CallbackActions } from '@/components/admin/row-actions';
 import { formatDate } from '@/lib/format';
+import { getAdminT } from '@/lib/admin-i18n';
 
-export const metadata = { title: 'Заявки' };
+export async function generateMetadata() {
+  const { t } = await getAdminT();
+  return { title: t.feedback.callbacks.title };
+}
 
 export default async function CallbacksPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const { supabase } = await requireStaff();
+  const [{ supabase }, { t, locale }] = await Promise.all([requireStaff(), getAdminT()]);
+  const c = t.feedback.callbacks;
   const { tab } = await searchParams;
   const done = tab === 'done';
   const { data } = await supabase
@@ -28,27 +33,27 @@ export default async function CallbacksPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageHeader title="Заявки" subtitle="Обратные звонки и быстрые заказы с сайта (дублируются в Telegram)" />
+      <PageHeader title={c.title} subtitle={c.subtitle} />
       <div className="mb-4 flex gap-2">
         <Link href="/admin/callbacks" className={`chip px-4 py-2 ${!done ? 'bg-primary text-primary-fg' : 'bg-surface-2'}`}>
-          Новые
+          {c.tabNew}
         </Link>
         <Link href="/admin/callbacks?tab=done" className={`chip px-4 py-2 ${done ? 'bg-primary text-primary-fg' : 'bg-surface-2'}`}>
-          Обработанные
+          {c.tabDone}
         </Link>
       </div>
       {!rows.length ? (
-        <Empty text={done ? 'Обработанных заявок нет' : 'Новых заявок нет 🎉'} />
+        <Empty text={done ? c.emptyDone : c.emptyNew} />
       ) : (
         <div className="card divide-y divide-border">
-          {rows.map((r) => (
-            <div key={r.id} className="flex flex-wrap items-center gap-4 p-5">
+          {rows.map((r, i) => (
+            <div key={r.id} className="animate-stagger-item flex flex-wrap items-center gap-4 p-5" style={{ '--i': i } as React.CSSProperties}>
               <div className="min-w-[200px] flex-1">
                 <div className="flex items-center gap-2">
                   <span className={`chip ${r.products ? 'bg-accent-soft text-accent' : 'bg-surface-2 text-muted'}`}>
-                    {r.products ? 'Быстрый заказ' : 'Звонок'}
+                    {r.products ? c.quickOrder : c.call}
                   </span>
-                  <span className="text-xs text-muted">{formatDate(r.created_at)}</span>
+                  <span className="text-xs text-muted">{formatDate(r.created_at, locale)}</span>
                 </div>
                 <p className="mt-1.5 font-semibold">
                   {r.name} ·{' '}

@@ -8,7 +8,10 @@ import { getDict, isLocale, locales } from '@/i18n/config';
 import { getCategories, getSettings } from '@/lib/data';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { createClient } from '@/lib/supabase/server';
+
+// No per-request cookies here, so storefront pages are cached and rebuilt at most every
+// 5 minutes; admin edits call revalidatePath() and refresh them immediately.
+export const revalidate = 300;
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -37,19 +40,14 @@ export default async function LocaleLayout({
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
 
-  const supabase = await createClient();
-  const [{ usdRate, contacts }, categories, { data: auth }] = await Promise.all([
-    getSettings(),
-    getCategories(),
-    supabase.auth.getUser(),
-  ]);
+  const [{ usdRate, contacts }, categories] = await Promise.all([getSettings(), getCategories()]);
 
   return (
     <html lang={locale} suppressHydrationWarning className={manrope.variable}>
       <body className="flex min-h-screen flex-col">
         <Providers>
-          <I18nProvider locale={locale} usdRate={usdRate} contacts={contacts} loggedIn={!!auth.user}>
-            <Header categories={categories} isLoggedIn={!!auth.user} />
+          <I18nProvider locale={locale} usdRate={usdRate} contacts={contacts}>
+            <Header categories={categories} />
             <main className="flex-1">{children}</main>
             <Footer locale={locale} categories={categories} contacts={contacts} />
           </I18nProvider>

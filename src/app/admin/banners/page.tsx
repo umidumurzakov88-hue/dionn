@@ -1,16 +1,22 @@
 import { requireStaff } from '@/lib/admin-auth';
+import { getAdminT } from '@/lib/admin-i18n';
 import { CrudTable } from '@/components/admin/crud';
 
-export const metadata = { title: 'Баннеры' };
+export async function generateMetadata() {
+  const { t } = await getAdminT();
+  return { title: t.catalog.banners.title };
+}
 
 export default async function BannersPage() {
   const { supabase } = await requireStaff();
+  const { t } = await getAdminT();
+  const L = t.catalog.banners;
   const { data } = await supabase.from('banners').select('*').order('sort');
   return (
     <CrudTable
       table="banners"
-      title="Баннеры на главной"
-      addLabel="Новый баннер"
+      title={L.heading}
+      addLabel={L.add}
       rows={data ?? []}
       defaults={{
         title_ru: '',
@@ -25,23 +31,23 @@ export default async function BannersPage() {
         is_active: true,
       }}
       columns={[
-        { key: 'image', label: 'Фото', kind: 'image' },
-        { key: 'title_ru', label: 'Заголовок' },
-        { key: 'link', label: 'Ссылка', className: 'font-mono text-xs text-muted' },
-        { key: 'sort', label: 'Порядок' },
-        { key: 'is_active', label: 'Активен', kind: 'bool' },
+        { key: 'image', label: L.colPhoto, kind: 'image' },
+        { key: 'title_ru', label: L.colTitle },
+        { key: 'link', label: L.colLink, className: 'font-mono text-xs text-muted' },
+        { key: 'sort', label: L.colSort },
+        { key: 'is_active', label: L.colActive, kind: 'bool' },
       ]}
       fields={[
-        { name: 'image', label: 'Изображение (горизонтальное, ~1800×800)', type: 'image', folder: 'banners' },
-        { name: 'title_ru', label: 'Заголовок (RU)', type: 'text', required: true },
-        { name: 'title_uz', label: 'Sarlavha (UZ)', type: 'text', half: true },
-        { name: 'title_en', label: 'Title (EN)', type: 'text', half: true },
-        { name: 'subtitle_ru', label: 'Подзаголовок (RU)', type: 'text' },
-        { name: 'subtitle_uz', label: 'Tavsif (UZ)', type: 'text', half: true },
-        { name: 'subtitle_en', label: 'Subtitle (EN)', type: 'text', half: true },
-        { name: 'link', label: 'Ссылка кнопки (например /catalog?category=divany)', type: 'text', half: true },
-        { name: 'sort', label: 'Порядок', type: 'number', half: true },
-        { name: 'is_active', label: 'Показывать', type: 'checkbox' },
+        { name: 'image', label: L.image, type: 'image', folder: 'banners' },
+        { name: 'title_ru', label: L.titleRu, type: 'text', required: true },
+        { name: 'title_uz', label: L.titleUz, type: 'text', half: true },
+        { name: 'title_en', label: L.titleEn, type: 'text', half: true },
+        { name: 'subtitle_ru', label: L.subtitleRu, type: 'text' },
+        { name: 'subtitle_uz', label: L.subtitleUz, type: 'text', half: true },
+        { name: 'subtitle_en', label: L.subtitleEn, type: 'text', half: true },
+        { name: 'link', label: L.link, type: 'text', half: true },
+        { name: 'sort', label: L.sort, type: 'number', half: true },
+        { name: 'is_active', label: L.show, type: 'checkbox' },
       ]}
     />
   );

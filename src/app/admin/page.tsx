@@ -1,12 +1,18 @@
 import Link from 'next/link';
 import { ArrowRight, CalendarDays, Receipt, ShoppingCart, TrendingUp, Users, Wallet } from 'lucide-react';
 import { requireStaff } from '@/lib/admin-auth';
-import { PageHeader, uzs, STATUS_LABEL } from '@/components/admin/ui';
+import { getAdminT } from '@/lib/admin-i18n';
+import { fmt, uzsL } from '@/i18n/admin';
+import { PageHeader } from '@/components/admin/ui';
 import { OrdersChart, RevenueChart, type DayPoint } from '@/components/admin/charts';
 import { OrdersTable } from '@/components/admin/orders-table';
+import { CountUp } from '@/components/admin/count-up';
 import { ORDER_STATUSES, type Order } from '@/lib/types';
 
-export const metadata = { title: 'Дашборд' };
+export async function generateMetadata() {
+  const { t } = await getAdminT();
+  return { title: t.dash.title };
+}
 
 interface Stats {
   revenue_today: number;
@@ -24,10 +30,20 @@ interface Stats {
   customers_month: number;
 }
 
+const STATUS_BAR: Record<string, string> = {
+  new: 'bg-blue-500',
+  confirmed: 'bg-violet-500',
+  delivering: 'bg-amber-500',
+  delivered: 'bg-emerald-500',
+  cancelled: 'bg-red-500',
+};
+
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
-  const { supabase } = await requireStaff();
-  const { days: d } = await searchParams;
-  const days = [7, 30, 90].includes(Number(d)) ? Number(d) : 30;
+  const [{ supabase }, { t, locale }] = await Promise.all([requireStaff(), getAdminT()]);
+  const d = t.dash;
+  const uzs = (v: number | string | null | undefined) => uzsL(v, locale);
+  const { days: dq } = await searchParams;
+  const days = [7, 30, 90].includes(Number(dq)) ? Number(dq) : 30;
 
   const [{ data: stats }, { data: series }, { data: top }, { data: recent }, { data: byStatus }] = await Promise.all([
     supabase.rpc('admin_stats'),
@@ -44,76 +60,107 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const totalOrders = statusCounts.reduce((a, x) => a + x.n, 0) || 1;
 
   const kpis = [
-    { label: 'Выручка сегодня', value: uzs(s.revenue_today), sub: `${s.orders_today ?? 0} заказов`, icon: Wallet },
-    { label: 'Выручка за 7 дней', value: uzs(s.revenue_week), sub: 'без отменённых', icon: TrendingUp },
-    { label: 'Выручка за месяц', value: uzs(s.revenue_month), sub: `${s.orders_month ?? 0} заказов`, icon: CalendarDays },
-    { label: 'Выручка за всё время', value: uzs(s.revenue_total), sub: `доставлено на ${uzs(s.revenue_delivered)}`, icon: Receipt },
-    { label: 'Всего заказов', value: String(s.orders_total ?? 0), sub: `${s.orders_new ?? 0} новых · ${s.orders_cancelled ?? 0} отменено`, icon: ShoppingCart },
-    { label: 'Средний чек', value: uzs(s.avg_check), sub: 'по всем заказам', icon: Receipt },
-    { label: 'Клиентов', value: String(s.customers_total ?? 0), sub: `+${s.customers_month ?? 0} за 30 дней`, icon: Users },
+    { label: d.revenueToday, value: Number(s.revenue_today ?? 0), money: true, sub: `${s.orders_today ?? 0} ${d.ordersCount}`, icon: Wallet },
+    { label: d.revenueWeek, value: Number(s.revenue_week ?? 0), money: true, sub: d.noCancelled, icon: TrendingUp },
+    { label: d.revenueMonth, value: Number(s.revenue_month ?? 0), money: true, sub: `${s.orders_month ?? 0} ${d.ordersCount}`, icon: CalendarDays },
+    { label: d.revenueTotal, value: Number(s.revenue_total ?? 0), money: true, sub: `${d.deliveredFor} ${uzs(s.revenue_delivered)}`, icon: Receipt },
+    {
+      label: d.ordersTotal,
+      value: Number(s.orders_total ?? 0),
+      money: false,
+      sub: `${s.orders_new ?? 0} ${d.newCount} · ${s.orders_cancelled ?? 0} ${d.cancelledCount}`,
+      icon: ShoppingCart,
+    },
+    { label: d.avgCheck, value: Number(s.avg_check ?? 0), money: true, sub: d.byAllOrders, icon: Receipt },
+    { label: d.customers, value: Number(s.customers_total ?? 0), money: false, sub: `+${s.customers_month ?? 0} ${d.per30}`, icon: Users },
   ];
 
   return (
     <>
-      <PageHeader title="Дашборд" subtitle="Ключевые показатели магазина (время — Ташкент)" />
+      <PageHeader title={d.title} subtitle={d.subtitle} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {kpis.map(({ label, value, sub, icon: Icon }) => (
-          <div key={label} className="card p-5">
+        {kpis.map(({ label, value, money, sub, icon: Icon }, i) => (
+          <div
+            key={label}
+            data-reveal
+            style={{ '--i': i } as React.CSSProperties}
+            className="card hover-lift group p-5 hover:border-accent/40 hover:shadow-xl hover:shadow-black/5"
+          >
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted">{label}</p>
-              <Icon className="size-4 text-accent" />
+              <span className="grid size-8 place-items-center rounded-lg bg-accent-soft text-accent transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110">
+                <Icon className="size-4" />
+              </span>
             </div>
-            <p className="mt-2 text-2xl font-extrabold tracking-tight">{value}</p>
+            <p className="mt-2 text-2xl font-extrabold tracking-tight">
+              <CountUp value={value} money={money} />
+            </p>
             <p className="mt-1 text-xs text-muted">{sub}</p>
           </div>
         ))}
         {s.orders_new > 0 && (
-          <Link href="/admin/orders?status=new" className="card flex flex-col justify-between bg-accent p-5 text-white transition hover:opacity-90">
-            <p className="text-sm opacity-90">Ждут обработки</p>
-            <p className="text-3xl font-extrabold">{s.orders_new}</p>
+          <Link
+            href="/admin/orders?status=new"
+            data-reveal
+            style={{ '--i': kpis.length } as React.CSSProperties}
+            className="card hover-lift group relative flex flex-col justify-between overflow-hidden bg-accent p-5 text-white hover:shadow-xl hover:shadow-accent/30"
+          >
+            <span className="absolute -right-6 -top-6 size-24 animate-ping rounded-full bg-white/10 [animation-duration:2.5s]" />
+            <p className="text-sm opacity-90">{d.awaiting}</p>
+            <p className="text-3xl font-extrabold">
+              <CountUp value={s.orders_new} />
+            </p>
             <p className="flex items-center gap-1 text-xs font-semibold">
-              Обработать <ArrowRight className="size-3.5" />
+              {d.process} <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
             </p>
           </Link>
         )}
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[2fr_1fr]">
-        <section className="card p-5">
+        <section data-reveal className="card p-5">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="font-bold">Выручка по дням</h2>
+              <h2 className="font-bold">{d.revenueByDay}</h2>
               <p className="text-sm text-muted">
-                {uzs(periodRevenue)} · {periodOrders} заказов за {days} дней
+                {uzs(periodRevenue)} · {periodOrders} {d.ordersCount} {fmt(d.forDays, { n: days })}
               </p>
             </div>
-            <div className="inline-flex rounded-full bg-surface-2 p-0.5 text-xs font-semibold">
+            <div className="relative inline-grid grid-cols-3 rounded-full bg-surface-2 p-0.5 text-xs font-semibold">
+              <span
+                aria-hidden
+                className="absolute inset-y-0.5 left-0.5 w-[calc((100%-4px)/3)] rounded-full bg-surface shadow-sm transition-transform duration-300"
+                style={{ transform: `translateX(${[7, 30, 90].indexOf(days) * 100}%)` }}
+              />
               {[7, 30, 90].map((n) => (
-                <Link key={n} href={`/admin?days=${n}`} className={`rounded-full px-3 py-1.5 ${n === days ? 'bg-surface shadow-sm' : 'text-muted'}`}>
-                  {n} дн.
+                <Link key={n} href={`/admin?days=${n}`} className={`relative z-10 rounded-full px-3 py-1.5 text-center transition-colors ${n === days ? '' : 'text-muted hover:text-fg'}`}>
+                  {n} {d.daysShort}
                 </Link>
               ))}
             </div>
           </div>
           <RevenueChart data={points} />
-          <h3 className="mb-1 mt-4 text-sm font-semibold text-muted">Заказы по дням</h3>
+          <h3 className="mb-1 mt-4 text-sm font-semibold text-muted">{d.ordersByDay}</h3>
           <OrdersChart data={points} />
         </section>
 
         <div className="space-y-6">
-          <section className="card p-5">
-            <h2 className="mb-4 font-bold">Заказы по статусам</h2>
+          <section data-reveal style={{ '--i': 1 } as React.CSSProperties} className="card p-5">
+            <h2 className="mb-4 font-bold">{d.byStatus}</h2>
             <ul className="space-y-3">
-              {statusCounts.map(({ st, n }) => (
+              {statusCounts.map(({ st, n }, i) => (
                 <li key={st}>
-                  <Link href={`/admin/orders?status=${st}`} className="block">
+                  <Link href={`/admin/orders?status=${st}`} className="group block">
                     <div className="mb-1 flex justify-between text-sm">
-                      <span>{STATUS_LABEL[st]}</span>
+                      <span className="transition-colors group-hover:text-accent">{t.status[st]}</span>
                       <span className="font-semibold">{n}</span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-surface-2">
-                      <div className="h-full rounded-full bg-fg" style={{ width: `${(n / totalOrders) * 100}%` }} />
+                      <div
+                        className={`animate-bar h-full origin-left rounded-full ${STATUS_BAR[st] ?? 'bg-fg'}`}
+                        style={{ width: `${(n / totalOrders) * 100}%`, '--i': i } as React.CSSProperties}
+                      />
                     </div>
                   </Link>
                 </li>
@@ -121,19 +168,31 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             </ul>
           </section>
 
-          <section className="card p-5">
-            <h2 className="mb-4 font-bold">Топ товаров по выручке</h2>
+          <section data-reveal style={{ '--i': 2 } as React.CSSProperties} className="card p-5">
+            <h2 className="mb-4 font-bold">{d.topProducts}</h2>
             {!top?.length ? (
-              <p className="text-sm text-muted">Пока нет продаж</p>
+              <p className="text-sm text-muted">{d.noSales}</p>
             ) : (
               <ol className="space-y-3">
                 {(top as { product_id: string; name: string; qty: number; revenue: number }[]).map((p, i) => (
-                  <li key={p.product_id ?? i} className="flex items-center gap-3 text-sm">
-                    <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-surface-2 text-xs font-bold">{i + 1}</span>
+                  <li
+                    key={p.product_id ?? i}
+                    className="animate-stagger-item flex items-center gap-3 rounded-lg text-sm transition hover:translate-x-1"
+                    style={{ '--i': i + 4 } as React.CSSProperties}
+                  >
+                    <span
+                      className={`grid size-7 shrink-0 place-items-center rounded-lg text-xs font-bold ${
+                        i === 0 ? 'bg-accent text-white' : 'bg-surface-2'
+                      }`}
+                    >
+                      {i + 1}
+                    </span>
                     <span className="min-w-0 flex-1 truncate">{p.name}</span>
                     <span className="text-right">
                       <span className="block font-semibold">{uzs(p.revenue)}</span>
-                      <span className="text-xs text-muted">{p.qty} шт.</span>
+                      <span className="text-xs text-muted">
+                        {p.qty} {t.common.pcs}
+                      </span>
                     </span>
                   </li>
                 ))}
@@ -143,11 +202,11 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </div>
       </div>
 
-      <section className="card mt-6 overflow-hidden">
+      <section data-reveal className="card mt-6 overflow-hidden">
         <div className="flex items-center justify-between p-5">
-          <h2 className="font-bold">Последние заказы</h2>
-          <Link href="/admin/orders" className="text-sm font-semibold text-muted hover:text-fg">
-            Все заказы →
+          <h2 className="font-bold">{d.recentOrders}</h2>
+          <Link href="/admin/orders" className="text-sm font-semibold text-muted transition hover:text-fg">
+            {d.allOrders}
           </Link>
         </div>
         <OrdersTable orders={(recent as Order[]) ?? []} />
@@ -155,4 +214,3 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     </>
   );
 }
-

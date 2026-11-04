@@ -7,19 +7,12 @@ import { toast } from '@/components/ui/toast';
 import { ImagesInput } from './image-upload';
 import type { Category, Product, Spec } from '@/lib/types';
 import { slugify } from '@/lib/format';
+import { useAdminT } from '@/i18n/admin/provider';
+import { fmt } from '@/i18n/admin';
 
 type Lang = 'ru' | 'uz' | 'en';
-const LANGS: { key: Lang; label: string }[] = [
-  { key: 'ru', label: 'Русский' },
-  { key: 'uz', label: "O'zbekcha" },
-  { key: 'en', label: 'English' },
-];
-const GROUPS = [
-  { key: 'color', label: 'Цвет' },
-  { key: 'size', label: 'Размер' },
-  { key: 'material', label: 'Материал' },
-  { key: 'option', label: 'Другое' },
-];
+const LANGS: Lang[] = ['ru', 'uz', 'en'];
+const GROUPS = ['color', 'size', 'material', 'option'] as const;
 
 function emptyInput(): ProductInput {
   return {
@@ -90,6 +83,8 @@ const num = (v: string) => (v === '' ? null : Number(v.replace(/\s/g, '')));
 
 export function ProductForm({ product, categories }: { product?: Product; categories: Category[] }) {
   const router = useRouter();
+  const { t } = useAdminT();
+  const tf = t.products.form;
   const [f, setF] = useState<ProductInput>(product ? fromProduct(product) : emptyInput());
   const [lang, setLang] = useState<Lang>('ru');
   const [pending, start] = useTransition();
@@ -102,13 +97,13 @@ export function ProductForm({ product, categories }: { product?: Product; catego
     start(async () => {
       const r = await saveProduct(f);
       if (!r.ok) return toast.error(r.error);
-      toast.ok('Товар сохранён');
+      toast.ok(tf.saved);
       if (!f.id && r.id) router.replace(`/admin/products/${r.id}`);
       else router.refresh();
     });
   };
 
-  const missingLangs = LANGS.filter((l) => l.key !== 'ru' && !f[`name_${l.key}` as const].trim());
+  const missingLangs = LANGS.filter((l) => l !== 'ru' && !f[`name_${l}` as const].trim());
 
   return (
     <form onSubmit={submit} className="grid gap-6 xl:grid-cols-[1fr_340px]">
@@ -116,24 +111,24 @@ export function ProductForm({ product, categories }: { product?: Product; catego
         {/* Names & descriptions */}
         <section className="card p-5">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-bold">Название и описание</h2>
+            <h2 className="font-bold">{tf.nameDesc}</h2>
             <div className="inline-flex rounded-full bg-surface-2 p-0.5 text-xs font-semibold">
               {LANGS.map((l) => (
                 <button
                   type="button"
-                  key={l.key}
-                  onClick={() => setLang(l.key)}
-                  className={`rounded-full px-3 py-1.5 ${lang === l.key ? 'bg-surface shadow-sm' : 'text-muted'}`}
+                  key={l}
+                  onClick={() => setLang(l)}
+                  className={`rounded-full px-3 py-1.5 ${lang === l ? 'bg-surface shadow-sm' : 'text-muted'}`}
                 >
-                  {l.label}
-                  {l.key !== 'ru' && !f[`name_${l.key}` as const].trim() && <span className="ml-1 text-danger">•</span>}
+                  {tf.langs[l]}
+                  {l !== 'ru' && !f[`name_${l}` as const].trim() && <span className="ml-1 text-danger">•</span>}
                 </button>
               ))}
             </div>
           </div>
           <div className="space-y-4">
             <div>
-              <label className="label">Название ({lang.toUpperCase()}){lang === 'ru' && ' *'}</label>
+              <label className="label">{tf.name} ({lang.toUpperCase()}){lang === 'ru' && ' *'}</label>
               <input
                 value={f[`name_${lang}`]}
                 onChange={(e) => {
@@ -145,12 +140,12 @@ export function ProductForm({ product, categories }: { product?: Product; catego
               />
             </div>
             <div>
-              <label className="label">Описание ({lang.toUpperCase()})</label>
+              <label className="label">{tf.description} ({lang.toUpperCase()})</label>
               <textarea value={f[`description_${lang}`]} onChange={(e) => set(`description_${lang}`, e.target.value)} rows={6} className="input" />
             </div>
             {missingLangs.length > 0 && (
               <p className="text-xs text-muted">
-                Не заполнено: {missingLangs.map((l) => l.label).join(', ')} — на этих языках будет показан русский текст.
+                {fmt(tf.missing, { langs: missingLangs.map((l) => tf.langs[l]).join(', ') })}
               </p>
             )}
           </div>
@@ -158,15 +153,15 @@ export function ProductForm({ product, categories }: { product?: Product; catego
 
         {/* Images */}
         <section className="card p-5">
-          <h2 className="mb-1 font-bold">Фотографии</h2>
-          <p className="mb-4 text-sm text-muted">Первое фото — главное. Фото автоматически сжимаются.</p>
+          <h2 className="mb-1 font-bold">{tf.photos}</h2>
+          <p className="mb-4 text-sm text-muted">{tf.photosHint}</p>
           <ImagesInput value={f.images} onChange={(v) => set('images', v)} />
         </section>
 
         {/* Variants */}
         <section className="card p-5">
           <div className="mb-1 flex items-center justify-between">
-            <h2 className="font-bold">Варианты (цвет, размер…)</h2>
+            <h2 className="font-bold">{tf.variants}</h2>
             <button
               type="button"
               onClick={() =>
@@ -177,10 +172,10 @@ export function ProductForm({ product, categories }: { product?: Product; catego
               }
               className="btn-outline px-3 py-2"
             >
-              <Plus className="size-4" /> Добавить
+              <Plus className="size-4" /> {t.common.add}
             </button>
           </div>
-          <p className="mb-4 text-sm text-muted">Покупатель выбирает вариант на странице товара. Пустая цена = цена товара.</p>
+          <p className="mb-4 text-sm text-muted">{tf.variantsHint}</p>
           <div className="space-y-3">
             {f.variants.map((v, i) => {
               const upd = (patch: Partial<typeof v>) => set('variants', f.variants.map((x, k) => (k === i ? { ...x, ...patch } : x)));
@@ -189,14 +184,14 @@ export function ProductForm({ product, categories }: { product?: Product; catego
                   <div className="grid gap-3 sm:grid-cols-[140px_1fr_1fr_1fr]">
                     <select value={v.group_name} onChange={(e) => upd({ group_name: e.target.value })} className="input py-2.5">
                       {GROUPS.map((g) => (
-                        <option key={g.key} value={g.key}>
-                          {g.label}
+                        <option key={g} value={g}>
+                          {tf.groups[g]}
                         </option>
                       ))}
                     </select>
-                    <input value={v.name_ru} onChange={(e) => upd({ name_ru: e.target.value })} placeholder="Название RU *" className="input py-2.5" />
-                    <input value={v.name_uz} onChange={(e) => upd({ name_uz: e.target.value })} placeholder="Nomi UZ" className="input py-2.5" />
-                    <input value={v.name_en} onChange={(e) => upd({ name_en: e.target.value })} placeholder="Name EN" className="input py-2.5" />
+                    <input value={v.name_ru} onChange={(e) => upd({ name_ru: e.target.value })} placeholder={tf.variantNameRu} className="input py-2.5" />
+                    <input value={v.name_uz} onChange={(e) => upd({ name_uz: e.target.value })} placeholder={tf.variantNameUz} className="input py-2.5" />
+                    <input value={v.name_en} onChange={(e) => upd({ name_en: e.target.value })} placeholder={tf.variantNameEn} className="input py-2.5" />
                   </div>
                   <div className="mt-3 grid gap-3 sm:grid-cols-[auto_1fr_1fr_1fr_auto] sm:items-center">
                     {v.group_name === 'color' ? (
@@ -204,15 +199,15 @@ export function ProductForm({ product, categories }: { product?: Product; catego
                     ) : (
                       <span className="hidden sm:block sm:w-14" />
                     )}
-                    <input inputMode="numeric" value={v.price ?? ''} onChange={(e) => upd({ price: num(e.target.value) })} placeholder="Цена, сум" className="input py-2.5" />
-                    <input inputMode="numeric" value={v.old_price ?? ''} onChange={(e) => upd({ old_price: num(e.target.value) })} placeholder="Старая цена" className="input py-2.5" />
-                    <input value={v.sku ?? ''} onChange={(e) => upd({ sku: e.target.value })} placeholder="Артикул" className="input py-2.5" />
-                    <button type="button" onClick={() => set('variants', f.variants.filter((_, k) => k !== i))} className="btn-ghost text-danger">
+                    <input inputMode="numeric" value={v.price ?? ''} onChange={(e) => upd({ price: num(e.target.value) })} placeholder={tf.variantPrice} className="input py-2.5" />
+                    <input inputMode="numeric" value={v.old_price ?? ''} onChange={(e) => upd({ old_price: num(e.target.value) })} placeholder={tf.variantOldPrice} className="input py-2.5" />
+                    <input value={v.sku ?? ''} onChange={(e) => upd({ sku: e.target.value })} placeholder={tf.sku} className="input py-2.5" />
+                    <button type="button" onClick={() => set('variants', f.variants.filter((_, k) => k !== i))} aria-label={tf.removeVariant} title={tf.removeVariant} className="btn-ghost text-danger">
                       <Trash2 className="size-4" />
                     </button>
                   </div>
                   <div className="mt-3">
-                    <p className="mb-1.5 text-xs text-muted">Фото варианта (необязательно)</p>
+                    <p className="mb-1.5 text-xs text-muted">{tf.variantPhoto}</p>
                     <div className="w-28">
                       <ImagesInput value={v.image ? [v.image] : []} onChange={(arr) => upd({ image: arr[0] ?? null })} multiple={false} />
                     </div>
@@ -226,9 +221,9 @@ export function ProductForm({ product, categories }: { product?: Product; catego
         {/* Specs */}
         <section className="card p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-bold">Характеристики</h2>
+            <h2 className="font-bold">{tf.specs}</h2>
             <button type="button" onClick={() => set('specs', [...f.specs, { ru: '', uz: '', en: '', value: '' }])} className="btn-outline px-3 py-2">
-              <Plus className="size-4" /> Добавить
+              <Plus className="size-4" /> {t.common.add}
             </button>
           </div>
           <div className="space-y-2">
@@ -236,17 +231,17 @@ export function ProductForm({ product, categories }: { product?: Product; catego
               const upd = (patch: Partial<Spec>) => set('specs', f.specs.map((x, k) => (k === i ? { ...x, ...patch } : x)));
               return (
                 <div key={i} className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_1.2fr_auto]">
-                  <input value={s.ru} onChange={(e) => upd({ ru: e.target.value })} placeholder="Параметр RU (Материал)" className="input py-2.5" />
+                  <input value={s.ru} onChange={(e) => upd({ ru: e.target.value })} placeholder={tf.specParam} className="input py-2.5" />
                   <input value={s.uz} onChange={(e) => upd({ uz: e.target.value })} placeholder="UZ" className="input py-2.5" />
                   <input value={s.en} onChange={(e) => upd({ en: e.target.value })} placeholder="EN" className="input py-2.5" />
-                  <input value={s.value} onChange={(e) => upd({ value: e.target.value })} placeholder="Значение (Дуб)" className="input py-2.5" />
-                  <button type="button" onClick={() => set('specs', f.specs.filter((_, k) => k !== i))} className="btn-ghost text-danger">
+                  <input value={s.value} onChange={(e) => upd({ value: e.target.value })} placeholder={tf.specValue} className="input py-2.5" />
+                  <button type="button" onClick={() => set('specs', f.specs.filter((_, k) => k !== i))} aria-label={tf.removeSpec} title={tf.removeSpec} className="btn-ghost text-danger">
                     <Trash2 className="size-4" />
                   </button>
                 </div>
               );
             })}
-            {!f.specs.length && <p className="text-sm text-muted">Например: Материал — Массив дуба; Размеры — 220×95×85 см.</p>}
+            {!f.specs.length && <p className="text-sm text-muted">{tf.specsHint}</p>}
           </div>
         </section>
       </div>
@@ -254,17 +249,17 @@ export function ProductForm({ product, categories }: { product?: Product; catego
       <aside className="space-y-6">
         <section className="card space-y-4 p-5 xl:sticky xl:top-24">
           <div>
-            <label className="label">Цена, сум *</label>
+            <label className="label">{tf.price}</label>
             <input inputMode="numeric" value={f.price || ''} onChange={(e) => set('price', num(e.target.value) ?? 0)} required className="input text-lg font-bold" />
           </div>
           <div>
-            <label className="label">Старая цена (для скидки)</label>
+            <label className="label">{tf.oldPrice}</label>
             <input inputMode="numeric" value={f.old_price ?? ''} onChange={(e) => set('old_price', num(e.target.value))} className="input" />
           </div>
           <div>
-            <label className="label">Категория</label>
+            <label className="label">{tf.category}</label>
             <select value={f.category_id ?? ''} onChange={(e) => set('category_id', e.target.value || null)} className="input">
-              <option value="">— Без категории —</option>
+              <option value="">{tf.noCategory}</option>
               {roots.map((r) => (
                 <optgroup key={r.id} label={r.name_ru}>
                   <option value={r.id}>{r.name_ru}</option>
@@ -280,63 +275,58 @@ export function ProductForm({ product, categories }: { product?: Product; catego
             </select>
           </div>
           <div>
-            <label className="label">Наличие</label>
+            <label className="label">{tf.stock}</label>
             <select value={f.stock_status} onChange={(e) => set('stock_status', e.target.value as ProductInput['stock_status'])} className="input">
-              <option value="in_stock">В наличии</option>
-              <option value="preorder">Предзаказ</option>
-              <option value="out_of_stock">Нет в наличии</option>
+              <option value="in_stock">{tf.stockOpt.in_stock}</option>
+              <option value="preorder">{tf.stockOpt.preorder}</option>
+              <option value="out_of_stock">{tf.stockOpt.out_of_stock}</option>
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Артикул</label>
+              <label className="label">{tf.sku}</label>
               <input value={f.sku} onChange={(e) => set('sku', e.target.value)} className="input" />
             </div>
             <div>
-              <label className="label">Порядок</label>
+              <label className="label">{tf.sort}</label>
               <input type="number" value={f.sort} onChange={(e) => set('sort', Number(e.target.value))} className="input" />
             </div>
           </div>
           <div>
-            <label className="label">Адрес страницы (slug)</label>
+            <label className="label">{tf.slug}</label>
             <input value={f.slug} onChange={(e) => set('slug', e.target.value)} className="input font-mono text-xs" />
           </div>
           <div className="space-y-2.5 border-t border-border pt-4 text-sm">
-            {(
-              [
-                ['is_active', 'Показывать на сайте'],
-                ['is_new', 'Метка «Новинка»'],
-                ['is_hit', 'Метка «Хит продаж»'],
-                ['installment', 'Доступна рассрочка'],
-              ] as const
-            ).map(([k, label]) => (
+            {(['is_active', 'is_new', 'is_hit', 'installment'] as const).map((k) => (
               <label key={k} className="flex cursor-pointer items-center gap-3">
                 <input type="checkbox" checked={f[k]} onChange={(e) => set(k, e.target.checked)} className="size-4 accent-[var(--accent)]" />
-                {label}
+                {tf.flags[k]}
               </label>
             ))}
           </div>
           <button disabled={pending} className="btn-primary h-12 w-full">
-            {pending ? 'Сохраняем…' : 'Сохранить товар'}
+            {pending ? tf.saving : tf.saveProduct}
           </button>
           {product && (
             <div className="flex gap-2">
               <a href={`/ru/product/${product.slug}`} target="_blank" className="btn-outline flex-1 text-xs">
-                Открыть на сайте
+                {tf.openOnSite}
               </a>
               <button
                 type="button"
                 disabled={pending}
                 onClick={() => {
-                  if (!confirm('Удалить товар? Это действие нельзя отменить. Можно вместо этого скрыть товар.')) return;
+                  if (!confirm(tf.confirmDelete)) return;
                   start(async () => {
                     const r = await deleteProduct(product.id);
                     if (r.ok) {
-                      toast.ok('Товар удалён');
+                      toast.ok(tf.deleted);
                       router.push('/admin/products');
                     } else toast.error(r.error);
                   });
                 }}
+                aria-label={tf.deleteProduct}
+                title={tf.deleteProduct}
                 className="btn-ghost text-danger"
               >
                 <Trash2 className="size-4" />

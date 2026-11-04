@@ -48,7 +48,7 @@ export function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface transition hover:shadow-xl hover:shadow-black/5">
+    <article className="hover-lift group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface hover:shadow-2xl hover:shadow-black/10">
       <Link href={href} className="relative block aspect-square overflow-hidden bg-surface-2">
         {product.images[0] && (
           <Image
@@ -56,7 +56,7 @@ export function ProductCard({ product }: { product: Product }) {
             alt={name}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="object-cover transition duration-500 group-hover:scale-105"
+            className="object-cover transition duration-700 ease-out group-hover:scale-110"
           />
         )}
         {product.images[1] && (
@@ -65,7 +65,7 @@ export function ProductCard({ product }: { product: Product }) {
             alt=""
             fill
             sizes="(max-width: 640px) 50vw, 25vw"
-            className="object-cover opacity-0 transition duration-500 group-hover:opacity-100"
+            className="object-cover opacity-0 transition duration-700 ease-out group-hover:scale-105 group-hover:opacity-100"
           />
         )}
         <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
@@ -83,7 +83,7 @@ export function ProductCard({ product }: { product: Product }) {
             hydrated && isFav ? 'text-danger' : ''
           }`}
         >
-          <Heart className={`size-[18px] ${hydrated && isFav ? 'fill-current' : ''}`} />
+          <Heart key={String(hydrated && isFav)} className={`size-[18px] ${hydrated && isFav ? "animate-pop fill-current" : ""}`} />
         </button>
         <button
           onClick={() => {
@@ -95,7 +95,7 @@ export function ProductCard({ product }: { product: Product }) {
             hydrated && isCmp ? 'text-accent' : ''
           }`}
         >
-          <BarChart3 className="size-[18px]" />
+          <BarChart3 key={String(hydrated && isCmp)} className={`size-[18px] ${hydrated && isCmp ? "animate-pop" : ""}`} />
         </button>
       </div>
 
@@ -122,7 +122,7 @@ export function ProductCard({ product }: { product: Product }) {
             onClick={quickAdd}
             disabled={product.stock_status === 'out_of_stock'}
             aria-label={t.product.addToCart}
-            className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-fg transition hover:opacity-85 disabled:opacity-40"
+            className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-fg transition duration-300 hover:scale-110 hover:bg-accent active:scale-95 disabled:opacity-40"
           >
             <ShoppingBag className="size-5" />
           </button>

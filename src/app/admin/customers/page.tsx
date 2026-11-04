@@ -1,11 +1,16 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { requireStaff } from '@/lib/admin-auth';
-import { PageHeader, uzs } from '@/components/admin/ui';
+import { PageHeader } from '@/components/admin/ui';
+import { getAdminT } from '@/lib/admin-i18n';
+import { uzsL } from '@/i18n/admin';
 import { Pagination, SearchBar } from '@/components/admin/search-bar';
 import { formatDate } from '@/lib/format';
 
-export const metadata = { title: 'Клиенты' };
+export async function generateMetadata() {
+  const { t } = await getAdminT();
+  return { title: t.customers.title };
+}
 const PER_PAGE = 30;
 
 interface Row {
@@ -20,10 +25,10 @@ interface Row {
   last_order: string | null;
 }
 
-const ROLE: Record<string, string> = { admin: 'Админ', manager: 'Менеджер', customer: 'Клиент' };
-
 export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; tab?: string }> }) {
-  const { supabase } = await requireStaff();
+  const [{ supabase }, { t, locale }] = await Promise.all([requireStaff(), getAdminT()]);
+  const c = t.customers;
+  const uzs = (v: number | string | null | undefined) => uzsL(v, locale);
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page) || 1);
   const tab = sp.tab === 'guests' ? 'guests' : 'users';
@@ -57,22 +62,22 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
     guests = [...map.values()];
   }
 
-  const tabHref = (t: string) => `/admin/customers?tab=${t}${search ? `&q=${encodeURIComponent(search)}` : ''}`;
+  const tabHref = (tb: string) => `/admin/customers?tab=${tb}${search ? `&q=${encodeURIComponent(search)}` : ''}`;
 
   return (
     <>
-      <PageHeader title="Клиенты" subtitle="Поиск по имени, телефону или e-mail">
+      <PageHeader title={c.title} subtitle={c.subtitle}>
         <Suspense>
-          <SearchBar placeholder="Имя, телефон, e-mail…" />
+          <SearchBar placeholder={c.searchPlaceholder} />
         </Suspense>
       </PageHeader>
 
       <div className="mb-4 flex gap-2">
         <Link href={tabHref('users')} className={`chip px-4 py-2 ${tab === 'users' ? 'bg-primary text-primary-fg' : 'bg-surface-2'}`}>
-          Зарегистрированные
+          {c.tabUsers}
         </Link>
         <Link href={tabHref('guests')} className={`chip px-4 py-2 ${tab === 'guests' ? 'bg-primary text-primary-fg' : 'bg-surface-2'}`}>
-          Покупатели без аккаунта
+          {c.tabGuests}
         </Link>
       </div>
 
@@ -82,25 +87,25 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
             <table className="w-full min-w-[760px] text-sm">
               <thead className="border-b border-border bg-surface-2/50 text-left text-xs uppercase tracking-wider text-muted">
                 <tr>
-                  <th className="px-5 py-3">Клиент</th>
-                  <th className="px-5 py-3">Телефон</th>
-                  <th className="px-5 py-3">Регистрация</th>
-                  <th className="px-5 py-3 text-right">Заказов</th>
-                  <th className="px-5 py-3 text-right">Потратил</th>
+                  <th className="px-5 py-3">{c.colCustomer}</th>
+                  <th className="px-5 py-3">{c.colPhone}</th>
+                  <th className="px-5 py-3">{c.colRegistered}</th>
+                  <th className="px-5 py-3 text-right">{c.colOrders}</th>
+                  <th className="px-5 py-3 text-right">{c.colSpent}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {users.map((u) => (
-                  <tr key={u.id} className="hover:bg-surface-2/60">
+                {users.map((u, i) => (
+                  <tr key={u.id} className="animate-stagger-item hover:bg-surface-2/60" style={{ '--i': i } as React.CSSProperties}>
                     <td className="px-5 py-3">
                       <Link href={`/admin/customers/${u.id}`} className="block">
                         <span className="font-semibold hover:text-accent">{u.full_name || '—'}</span>
-                        {u.role !== 'customer' && <span className="chip ml-2 bg-accent-soft text-accent">{ROLE[u.role]}</span>}
+                        {u.role !== 'customer' && <span className="chip ml-2 bg-accent-soft text-accent">{c.role[u.role]}</span>}
                         <span className="block text-xs text-muted">{u.email}</span>
                       </Link>
                     </td>
                     <td className="px-5 py-3">{u.phone || '—'}</td>
-                    <td className="whitespace-nowrap px-5 py-3 text-muted">{formatDate(u.created_at, 'ru', false)}</td>
+                    <td className="whitespace-nowrap px-5 py-3 text-muted">{formatDate(u.created_at, locale, false)}</td>
                     <td className="px-5 py-3 text-right">{u.orders_count}</td>
                     <td className="whitespace-nowrap px-5 py-3 text-right font-semibold">{uzs(u.total_spent)}</td>
                   </tr>
@@ -108,7 +113,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                 {!users.length && (
                   <tr>
                     <td colSpan={5} className="px-5 py-10 text-center text-muted">
-                      Никого не найдено
+                      {c.nobody}
                     </td>
                   </tr>
                 )}
@@ -118,23 +123,23 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
             <table className="w-full min-w-[640px] text-sm">
               <thead className="border-b border-border bg-surface-2/50 text-left text-xs uppercase tracking-wider text-muted">
                 <tr>
-                  <th className="px-5 py-3">Имя</th>
-                  <th className="px-5 py-3">Телефон</th>
-                  <th className="px-5 py-3">Последний заказ</th>
-                  <th className="px-5 py-3 text-right">Заказов</th>
-                  <th className="px-5 py-3 text-right">Потратил</th>
+                  <th className="px-5 py-3">{c.colName}</th>
+                  <th className="px-5 py-3">{c.colPhone}</th>
+                  <th className="px-5 py-3">{c.colLastOrder}</th>
+                  <th className="px-5 py-3 text-right">{c.colOrders}</th>
+                  <th className="px-5 py-3 text-right">{c.colSpent}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {guests.map((g) => (
-                  <tr key={g.phone} className="hover:bg-surface-2/60">
+                {guests.map((g, i) => (
+                  <tr key={g.phone} className="animate-stagger-item hover:bg-surface-2/60" style={{ '--i': i } as React.CSSProperties}>
                     <td className="px-5 py-3 font-semibold">{g.name}</td>
                     <td className="px-5 py-3">
                       <Link href={`/admin/orders?q=${encodeURIComponent(g.phone)}`} className="hover:text-accent">
                         {g.phone}
                       </Link>
                     </td>
-                    <td className="whitespace-nowrap px-5 py-3 text-muted">{formatDate(g.last)}</td>
+                    <td className="whitespace-nowrap px-5 py-3 text-muted">{formatDate(g.last, locale)}</td>
                     <td className="px-5 py-3 text-right">{g.orders}</td>
                     <td className="whitespace-nowrap px-5 py-3 text-right font-semibold">{uzs(g.total)}</td>
                   </tr>
@@ -142,7 +147,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                 {!guests.length && (
                   <tr>
                     <td colSpan={5} className="px-5 py-10 text-center text-muted">
-                      Никого не найдено
+                      {c.nobody}
                     </td>
                   </tr>
                 )}

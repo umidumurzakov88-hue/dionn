@@ -4,8 +4,11 @@ import { useTransition } from 'react';
 import { Check, EyeOff, RotateCcw, Trash2 } from 'lucide-react';
 import { deleteRow, setCallbackHandled, setReviewApproved } from '@/app/admin/actions';
 import { toast } from '@/components/ui/toast';
+import { useAdminT } from '@/i18n/admin/provider';
 
 export function ReviewActions({ id, approved }: { id: string; approved: boolean }) {
+  const { t } = useAdminT();
+  const A = t.catalog.actions;
   const router = useRouter();
   const [pending, start] = useTransition();
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>) =>
@@ -18,18 +21,18 @@ export function ReviewActions({ id, approved }: { id: string; approved: boolean 
     <div className="flex gap-1">
       {approved ? (
         <button disabled={pending} onClick={() => run(() => setReviewApproved(id, false))} className="btn-outline px-3 py-2 text-xs">
-          <EyeOff className="size-3.5" /> Скрыть
+          <EyeOff className="size-3.5" /> {A.hide}
         </button>
       ) : (
         <button disabled={pending} onClick={() => run(() => setReviewApproved(id, true))} className="btn-primary px-3 py-2 text-xs">
-          <Check className="size-3.5" /> Опубликовать
+          <Check className="size-3.5" /> {A.publish}
         </button>
       )}
       <button
         disabled={pending}
-        onClick={() => confirm('Удалить отзыв?') && run(() => deleteRow('reviews', id))}
+        onClick={() => confirm(A.confirmDeleteReview) && run(() => deleteRow('reviews', id))}
         className="btn-ghost px-2 text-danger"
-        aria-label="delete"
+        aria-label={t.common.delete}
       >
         <Trash2 className="size-4" />
       </button>
@@ -38,6 +41,8 @@ export function ReviewActions({ id, approved }: { id: string; approved: boolean 
 }
 
 export function CallbackActions({ id, handled }: { id: string; handled: boolean }) {
+  const { t } = useAdminT();
+  const A = t.catalog.actions;
   const router = useRouter();
   const [pending, start] = useTransition();
   return (
@@ -55,25 +60,25 @@ export function CallbackActions({ id, handled }: { id: string; handled: boolean 
       >
         {handled ? (
           <>
-            <RotateCcw className="size-3.5" /> Вернуть
+            <RotateCcw className="size-3.5" /> {A.restore}
           </>
         ) : (
           <>
-            <Check className="size-3.5" /> Обработано
+            <Check className="size-3.5" /> {A.handled}
           </>
         )}
       </button>
       <button
         disabled={pending}
         onClick={() =>
-          confirm('Удалить заявку?') &&
+          confirm(A.confirmDeleteCallback) &&
           start(async () => {
             await deleteRow('callback_requests', id);
             router.refresh();
           })
         }
         className="btn-ghost px-2 text-danger"
-        aria-label="delete"
+        aria-label={t.common.delete}
       >
         <Trash2 className="size-4" />
       </button>

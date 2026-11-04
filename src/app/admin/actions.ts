@@ -5,6 +5,10 @@ import { notifyCustomerStatus, notifyAdmins, tgCall } from '@/lib/telegram';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ORDER_STATUSES, type OrderStatus, type Spec } from '@/lib/types';
 import { slugify } from '@/lib/format';
+import { getAdminT } from '@/lib/admin-i18n';
+
+/** Localized messages returned to the admin UI. */
+const msg = async () => (await getAdminT()).t.settings.actions;
 
 type Result = { ok: true; id?: string; message?: string } | { ok: false; error: string };
 
@@ -13,13 +17,13 @@ const refreshShop = () => revalidatePath('/', 'layout');
 // ---------------------------------------------------------------- Orders
 export async function updateOrderStatus(orderId: string, status: OrderStatus): Promise<Result> {
   const { supabase, user } = await requireStaff();
-  if (!ORDER_STATUSES.includes(status)) return { ok: false, error: 'Неверный статус' };
+  if (!ORDER_STATUSES.includes(status)) return { ok: false, error: (await msg()).badStatus };
   const { data: order, error } = await supabase.from('orders').update({ status }).eq('id', orderId).select('*').single();
   if (error) return { ok: false, error: error.message };
   await supabase.from('order_status_history').insert({ order_id: orderId, status, changed_by: user.id });
   const sent = await notifyCustomerStatus(order, status);
   revalidatePath('/admin', 'layout');
-  return { ok: true, message: sent ? 'Статус обновлён, клиент уведомлён в Telegram' : 'Статус обновлён' };
+  return { ok: true, message: sent ? (await msg()).statusUpdatedNotified : (await msg()).statusUpdated };
 }
 
 export async function updateOrderMeta(orderId: string, patch: { admin_note?: string; payment_status?: string }): Promise<Result> {
@@ -80,8 +84,8 @@ export interface ProductInput {
 
 export async function saveProduct(input: ProductInput): Promise<Result> {
   const { supabase } = await requireStaff();
-  if (!input.name_ru.trim()) return { ok: false, error: 'Укажите название (RU)' };
-  if (!(input.price >= 0)) return { ok: false, error: 'Укажите цену' };
+  if (!input.name_ru.trim()) return { ok: false, error: (await msg()).nameRequired };
+  if (!(input.price >= 0)) return { ok: false, error: (await msg()).priceRequired };
 
   const row = {
     slug: slugify(input.slug || input.name_ru) || `product-${Date.now()}`,
@@ -108,10 +112,10 @@ export async function saveProduct(input: ProductInput): Promise<Result> {
   let id = input.id;
   if (id) {
     const { error } = await supabase.from('products').update(row).eq('id', id);
-    if (error) return { ok: false, error: error.code === '23505' ? 'Такой адрес (slug) уже занят' : error.message };
+    if (error) return { ok: false, error: error.code === '23505' ? (await msg()).slugTaken : error.message };
   } else {
     const { data, error } = await supabase.from('products').insert(row).select('id').single();
-    if (error) return { ok: false, error: error.code === '23505' ? 'Такой адрес (slug) уже занят' : error.message };
+    if (error) return { ok: false, error: error.code === '23505' ? (await msg()).slugTaken : error.message };
     id = data.id;
   }
 
@@ -190,7 +194,7 @@ export async function saveRow(table: SimpleTable, row: Record<string, unknown>, 
   if (!isUpdate && key === 'id') delete data.id;
   const q = isUpdate ? supabase.from(table).update(data).eq(key, data[key] as string) : supabase.from(table).insert(data);
   const { error } = await q;
-  if (error) return { ok: false, error: error.code === '23505' ? 'Такое значение уже существует' : error.message };
+  if (error) return { ok: false, error: error.code === '23505' ? (await msg()).duplicateValue : error.message };
   refreshShop();
   return { ok: true };
 }
@@ -222,7 +226,7 @@ export async function setCallbackHandled(id: string, handled: boolean): Promise<
 // ---------------------------------------------------------------- Customers / roles
 export async function setUserRole(userId: string, role: 'customer' | 'manager' | 'admin'): Promise<Result> {
   const { supabase, user } = await requireAdmin();
-  if (userId === user.id && role !== 'admin') return { ok: false, error: 'Нельзя снять права с самого себя' };
+  if (userId === user.id && role !== 'admin') return { ok: false, error: (await msg()).cannotDemoteSelf };
   const { error } = await supabase.from('profiles').update({ role }).eq('id', userId);
   if (error) return { ok: false, error: error.message };
   revalidatePath('/admin/customers', 'layout');
@@ -240,16 +244,16 @@ export async function saveSetting(key: 'usd_rate' | 'contacts', value: unknown):
 
 export async function telegramTest(): Promise<Result> {
   await requireStaff();
-  if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_ADMIN_CHAT_ID) return { ok: false, error: 'Не заданы TELEGRAM_BOT_TOKEN / TELEGRAM_ADMIN_CHAT_ID' };
+  if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_ADMIN_CHAT_ID) return { ok: false, error: (await msg()).telegramNotConfigured };
   await notifyAdmins('✅ <b>Dionn</b>: тестовое уведомление из админ-панели. Бот работает!');
-  return { ok: true, message: 'Сообщение отправлено. Если не пришло — откройте бота и нажмите /start.' };
+  return { ok: true, message: (await msg()).testSent };
 }
 
 /** Registers this site's webhook with Telegram (needs a public https URL). */
 export async function telegramSetWebhook(): Promise<Result> {
   await requireAdmin();
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? '';
-  if (!site.startsWith('https://')) return { ok: false, error: 'NEXT_PUBLIC_SITE_URL должен быть https-адресом сайта (после публикации)' };
+  if (!site.startsWith('https://')) return { ok: false, error: (await msg()).siteUrlNotHttps };
   const res = await tgCall('setWebhook', {
     url: `${site}/api/telegram/webhook`,
     secret_token: process.env.TELEGRAM_WEBHOOK_SECRET,
@@ -257,7 +261,7 @@ export async function telegramSetWebhook(): Promise<Result> {
     drop_pending_updates: true,
   });
   await tgCall('setMyCommands', { commands: [{ command: 'start', description: 'Начать / Boshlash / Start' }] });
-  return res ? { ok: true, message: 'Webhook подключён' } : { ok: false, error: 'Telegram отклонил запрос' };
+  return res ? { ok: true, message: (await msg()).webhookConnected } : { ok: false, error: (await msg()).telegramRejected };
 }
 
 export async function telegramWebhookInfo() {
