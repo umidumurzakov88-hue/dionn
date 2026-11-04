@@ -3,6 +3,7 @@
 // Copies the photos to public/products and upserts one product per NNN (by slug), so it is safe to re-run.
 // Usage:  node --env-file=.env.local scripts/import-furniture.mjs
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
@@ -130,12 +131,16 @@ for (const f of fs.readdirSync(SRC).filter((f) => /\.jpe?g$/i.test(f))) {
   const [, code, name, n] = m;
   (groups[code] ??= { name, files: [] }).files.push({ f, n: n ? Number(n) : 1 });
 }
+// Start clean so replaced photos don't linger; a content hash in the name busts browser/CDN caches.
+fs.rmSync(DEST, { recursive: true, force: true });
 fs.mkdirSync(DEST, { recursive: true });
 for (const g of Object.values(groups)) {
   g.files.sort((a, b) => a.n - b.n);
   g.images = g.files.map(({ f, n }) => {
-    const out = `${g.name}${n > 1 ? `-${n}` : ''}.jpg`;
-    fs.copyFileSync(path.join(SRC, f), path.join(DEST, out));
+    const buf = fs.readFileSync(path.join(SRC, f));
+    const hash = crypto.createHash('sha1').update(buf).digest('hex').slice(0, 8);
+    const out = `${g.name}${n > 1 ? `-${n}` : ''}-${hash}.jpg`;
+    fs.writeFileSync(path.join(DEST, out), buf);
     return `/products/${out}`;
   });
 }
