@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import sharp from 'sharp';
 
 const SRC = path.resolve('../dionn_f furniture');
 const DEST = path.resolve('public/products');
@@ -136,13 +137,37 @@ fs.rmSync(DEST, { recursive: true, force: true });
 fs.mkdirSync(DEST, { recursive: true });
 for (const g of Object.values(groups)) {
   g.files.sort((a, b) => a.n - b.n);
-  g.images = g.files.map(({ f, n }) => {
-    const buf = fs.readFileSync(path.join(SRC, f));
-    const hash = crypto.createHash('sha1').update(buf).digest('hex').slice(0, 8);
-    const out = `${g.name}${n > 1 ? `-${n}` : ''}-${hash}.jpg`;
-    fs.writeFileSync(path.join(DEST, out), buf);
-    return `/products/${out}`;
-  });
+  g.images = await Promise.all(
+    g.files.map(async ({ f, n }) => {
+      const buf = await squareOnWhite(path.join(SRC, f));
+      const hash = crypto.createHash('sha1').update(buf).digest('hex').slice(0, 8);
+      const out = `${g.name}${n > 1 ? `-${n}` : ''}-${hash}.jpg`;
+      fs.writeFileSync(path.join(DEST, out), buf);
+      return `/products/${out}`;
+    }),
+  );
+}
+
+// Product boxes on the site are square: shrink the whole photo to fit a square
+// (with a small margin) and fill the leftover space with white, so nothing gets cut off.
+async function squareOnWhite(file) {
+  const SIZE = 1200, INNER = Math.round(SIZE * 0.9);
+  const white = { r: 255, g: 255, b: 255, alpha: 1 };
+  const { data, info } = await sharp(file).flatten({ background: white }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  // Some photos have an off-white/light-grey studio background: push near-white pixels to pure white
+  // (smooth ramp, so light fabric stays untouched) so the photo blends into the white padding.
+  const LO = 228, HI = 240;
+  for (let i = 0; i < data.length; i += 3) {
+    const m = Math.min(data[i], data[i + 1], data[i + 2]);
+    if (m <= LO) continue;
+    const t = Math.min(1, (m - LO) / (HI - LO));
+    for (let c = 0; c < 3; c++) data[i + c] += Math.round((255 - data[i + c]) * t);
+  }
+  const fitted = await sharp(data, { raw: info }).resize(INNER, INNER, { fit: 'contain', background: white }).png().toBuffer();
+  return sharp({ create: { width: SIZE, height: SIZE, channels: 3, background: white } })
+    .composite([{ input: fitted, gravity: 'center' }])
+    .jpeg({ quality: 86, mozjpeg: true })
+    .toBuffer();
 }
 const missing = Object.keys(groups).filter((c) => !P[c]);
 if (missing.length) console.warn('⚠ no product data for:', missing.join(', '));
