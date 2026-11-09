@@ -1,5 +1,5 @@
 import 'server-only';
-import type { Locale, Order, OrderItem, OrderStatus } from './types';
+import type { CustomOrder, Locale, Order, OrderItem, OrderStatus } from './types';
 import { formatPrice } from './format';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -114,6 +114,86 @@ const STATUS_TEXT: Record<Locale, Record<OrderStatus, string>> = {
 
 export function statusMessage(locale: Locale, status: OrderStatus, number: number) {
   return (STATUS_TEXT[locale] ?? STATUS_TEXT.ru)[status].replace('{n}', String(number));
+}
+
+// ---------------------------------------------------------------- Individual orders
+type CustomOrderTg = Pick<
+  CustomOrder,
+  'id' | 'number' | 'name' | 'phone' | 'description' | 'dimensions' | 'images' | 'price' | 'lead_time' | 'admin_comment' | 'telegram_chat_id' | 'locale'
+>;
+
+function adminLink(id: string) {
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+  return site.startsWith('https://')
+    ? { reply_markup: { inline_keyboard: [[{ text: 'Открыть в админке', url: `${site}/admin/custom-orders?open=${id}#co-${id}` }]] } }
+    : {};
+}
+
+/** New request → admins get the photos (as an album) and the details with a link to the admin page. */
+export async function notifyNewCustomOrder(o: CustomOrderTg) {
+  const chats = adminChats();
+  if (!chats.length) return;
+  const html = [
+    `✏️ <b>Индивидуальный заказ №${o.number}</b>`,
+    '',
+    `👤 ${escapeHtml(o.name)}`,
+    `📞 ${escapeHtml(o.phone)}`,
+    o.dimensions ? `📐 ${escapeHtml(o.dimensions)}` : null,
+    '',
+    `💬 ${escapeHtml(o.description)}`,
+    '',
+    `📷 Фото: ${o.images.length}`,
+  ]
+    .filter((l) => l !== null)
+    .join('\n');
+  await Promise.all(
+    chats.map(async (chat) => {
+      if (o.images.length) {
+        await tgCall('sendMediaGroup', { chat_id: chat, media: o.images.slice(0, 10).map((url) => ({ type: 'photo', media: url })) });
+      }
+      await sendMessage(chat, html, adminLink(o.id));
+    }),
+  );
+}
+
+const QUOTE_TEXT: Record<Locale, { title: string; price: string; lead: string; open: string }> = {
+  ru: { title: '💰 Мы оценили ваш индивидуальный заказ №{n}', price: 'Цена', lead: 'Срок', open: 'Откройте личный кабинет на сайте, чтобы принять или отказаться.' },
+  uz: { title: '💰 №{n} individual buyurtmangiz baholandi', price: 'Narx', lead: 'Muddat', open: 'Qabul qilish yoki rad etish uchun saytdagi shaxsiy kabinetni oching.' },
+  en: { title: '💰 We have priced your custom order #{n}', price: 'Price', lead: 'Lead time', open: 'Open your account on the website to accept or decline.' },
+};
+
+/** Price set by the workshop → tell the customer (only if they signed in via Telegram). */
+export async function notifyCustomerQuote(o: CustomOrderTg) {
+  if (!o.telegram_chat_id || o.price == null) return false;
+  const q = QUOTE_TEXT[o.locale] ?? QUOTE_TEXT.ru;
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+  const html = [
+    `<b>${q.title.replace('{n}', String(o.number))}</b>`,
+    '',
+    `${q.price}: <b>${formatPrice(Number(o.price), 'UZS', 1, o.locale)}</b>`,
+    o.lead_time ? `${q.lead}: ${escapeHtml(o.lead_time)}` : null,
+    o.admin_comment ? `\n💬 ${escapeHtml(o.admin_comment)}` : null,
+    '',
+    q.open,
+  ]
+    .filter((l) => l !== null)
+    .join('\n');
+  const markup = site.startsWith('https://') ? { reply_markup: { inline_keyboard: [[{ text: 'Dionn', url: `${site}/${o.locale}/account` }]] } } : {};
+  return !!(await sendMessage(o.telegram_chat_id, html, markup));
+}
+
+/** Customer accepted / declined the price → admins. */
+export async function notifyCustomOrderAnswer(o: CustomOrderTg, accepted: boolean) {
+  const html = [
+    accepted ? `✅ <b>Клиент принял цену — индивидуальный заказ №${o.number}</b>` : `❌ <b>Клиент отказался — индивидуальный заказ №${o.number}</b>`,
+    '',
+    `👤 ${escapeHtml(o.name)}`,
+    `📞 ${escapeHtml(o.phone)}`,
+    o.price != null ? `💰 ${formatPrice(Number(o.price), 'UZS', 1, 'ru')}` : null,
+  ]
+    .filter((l) => l !== null)
+    .join('\n');
+  await notifyAdmins(html, adminLink(o.id));
 }
 
 export async function notifyCustomerStatus(order: Pick<Order, 'telegram_chat_id' | 'locale' | 'number'>, status: OrderStatus) {

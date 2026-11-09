@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
   BadgePercent,
+  Camera,
   ExternalLink,
   Image as ImageIcon,
   LayoutDashboard,
@@ -27,6 +28,7 @@ import { AdminLanguageSwitch } from './language-switch';
 export interface ShellCounts {
   orders_new: number;
   callbacks_open: number;
+  custom_new: number;
   reviews_pending: number;
 }
 
@@ -53,6 +55,7 @@ export function AdminShell({
     { href: '/admin', label: t.nav.dashboard, icon: LayoutDashboard, exact: true },
     { href: '/admin/orders', label: t.nav.orders, icon: ShoppingCart, badge: counts.orders_new },
     { href: '/admin/callbacks', label: t.nav.callbacks, icon: PhoneCall, badge: counts.callbacks_open },
+    { href: '/admin/custom-orders', label: t.nav.customOrders, icon: Camera, badge: counts.custom_new },
     { href: '/admin/customers', label: t.nav.customers, icon: Users },
     { href: '/admin/products', label: t.nav.products, icon: Package },
     { href: '/admin/categories', label: t.nav.categories, icon: Tags },

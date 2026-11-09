@@ -6,21 +6,10 @@ import { createClient } from '@/lib/supabase/client';
 import { toast } from '@/components/ui/toast';
 import { useAdminT } from '@/i18n/admin/provider';
 import { fmt } from '@/i18n/admin';
-
-/** Resizes to max 1600px and converts to WebP in the browser before upload. */
-async function compress(file: File, max = 1600): Promise<Blob> {
-  if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') return file;
-  const bmp = await createImageBitmap(file);
-  const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bmp.width * scale);
-  canvas.height = Math.round(bmp.height * scale);
-  canvas.getContext('2d')!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
-  return new Promise((res) => canvas.toBlob((b) => res(b ?? file), 'image/webp', 0.85));
-}
+import { compressImage } from '@/lib/compress-image';
 
 export async function uploadImage(file: File, folder: string, errorTpl = 'Upload error: {msg}'): Promise<string | null> {
-  const blob = await compress(file);
+  const blob = await compressImage(file);
   const ext = blob.type === 'image/webp' ? 'webp' : file.name.split('.').pop() || 'jpg';
   const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const sb = createClient();

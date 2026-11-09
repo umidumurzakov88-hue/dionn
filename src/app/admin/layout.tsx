@@ -41,11 +41,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </div>
     );
   } else {
-    const { data } = await staff.supabase.rpc('admin_stats');
+    const [{ data }, { count: customNew }] = await Promise.all([
+      staff.supabase.rpc('admin_stats'),
+      staff.supabase.from('custom_orders').select('id', { count: 'exact', head: true }).eq('status', 'new'),
+    ]);
     const counts: ShellCounts = {
       orders_new: data?.orders_new ?? 0,
       callbacks_open: data?.callbacks_open ?? 0,
       reviews_pending: data?.reviews_pending ?? 0,
+      custom_new: customNew ?? 0,
     };
     body = (
       <AdminShell

@@ -180,3 +180,28 @@ export function tr<T extends object>(obj: T, field: string, locale: Locale): str
   if (typeof v === 'string' && v.trim()) return v;
   return (rec[`${field}_ru`] as string) ?? '';
 }
+
+export type CustomOrderStatus = 'new' | 'quoted' | 'accepted' | 'declined';
+export const CUSTOM_ORDER_STATUSES: CustomOrderStatus[] = ['new', 'quoted', 'accepted', 'declined'];
+
+/** Individual order: customer photos → workshop quote → customer answer. */
+export interface CustomOrder {
+  id: string;
+  number: number;
+  user_id: string | null;
+  name: string;
+  phone: string;
+  description: string;
+  dimensions: string | null;
+  images: string[];
+  status: CustomOrderStatus;
+  price: number | null;
+  lead_time: string | null;
+  admin_comment: string | null;
+  telegram_chat_id: number | null;
+  locale: Locale;
+  quoted_at: string | null;
+  answered_at: string | null;
+  created_at: string;
+  updated_at: string;
+}

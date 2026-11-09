@@ -1,7 +1,7 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { requireAdmin, requireStaff } from '@/lib/admin-auth';
-import { notifyCustomerStatus, notifyAdmins, tgCall } from '@/lib/telegram';
+import { notifyCustomerQuote, notifyCustomerStatus, notifyAdmins, tgCall } from '@/lib/telegram';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ORDER_STATUSES, type OrderStatus, type Spec } from '@/lib/types';
 import { slugify } from '@/lib/format';
@@ -226,6 +226,48 @@ export async function setCallbackHandled(id: string, handled: boolean): Promise<
   const { supabase } = await requireStaff();
   const { error } = await supabase.from('callback_requests').update({ handled }).eq('id', id);
   if (error) return { ok: false, error: error.message };
+  revalidatePath('/admin', 'layout');
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------- Individual orders
+export async function quoteCustomOrder(
+  id: string,
+  input: { price: number; lead_time: string; admin_comment: string },
+): Promise<Result> {
+  const { supabase } = await requireStaff();
+  const m = (await getAdminT()).t.feedback.custom;
+  const price = Math.round(Number(input.price));
+  if (!(price > 0)) return { ok: false, error: m.badPrice };
+  const { data: order, error } = await supabase
+    .from('custom_orders')
+    .update({
+      price,
+      lead_time: input.lead_time.trim().slice(0, 120) || null,
+      admin_comment: input.admin_comment.trim().slice(0, 2000) || null,
+      status: 'quoted',
+      quoted_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .in('status', ['new', 'quoted']) // once the customer answered, the quote is final
+    .select('*')
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!order) return { ok: false, error: m.locked };
+  const sent = await notifyCustomerQuote(order);
+  revalidatePath('/admin', 'layout');
+  return { ok: true, message: sent ? m.quoteSentTg : m.quoteSent };
+}
+
+export async function deleteCustomOrder(id: string): Promise<Result> {
+  const { supabase } = await requireStaff();
+  const { data } = await supabase.from('custom_orders').select('images').eq('id', id).maybeSingle();
+  const { error } = await supabase.from('custom_orders').delete().eq('id', id);
+  if (error) return { ok: false, error: error.message };
+  // Remove the uploaded photos from storage as well
+  const marker = '/storage/v1/object/public/media/';
+  const paths = ((data?.images ?? []) as string[]).map((u) => u.split(marker)[1]).filter(Boolean);
+  if (paths.length) await createAdminClient().storage.from('media').remove(paths);
   revalidatePath('/admin', 'layout');
   return { ok: true };
 }

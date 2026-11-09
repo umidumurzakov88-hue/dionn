@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, LogOut, Send } from 'lucide-react';
+import { Camera, LayoutDashboard, LogOut, Send } from 'lucide-react';
 import { getDict, isLocale } from '@/i18n/config';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate, formatPrice } from '@/lib/format';
 import { ProfileForm } from '@/components/shop/profile-form';
-import type { Locale, Order, Profile } from '@/lib/types';
+import type { CustomOrder, Locale, Order, Profile } from '@/lib/types';
+import { CustomOrderCard } from '@/components/shop/custom-order-card';
 import { isInternalEmail } from '@/lib/internal-login';
 
 export const metadata: Metadata = { robots: { index: false } };
@@ -19,9 +20,10 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect(`/${locale}/login?next=/${locale}/account`);
 
-  const [{ data: profile }, { data: orders }] = await Promise.all([
+  const [{ data: profile }, { data: orders }, { data: customOrders }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', auth.user.id).maybeSingle(),
     supabase.from('orders').select('*, order_items(*)').eq('user_id', auth.user.id).order('created_at', { ascending: false }),
+    supabase.from('custom_orders').select('*').eq('user_id', auth.user.id).order('created_at', { ascending: false }),
   ]);
   const p = profile as Profile | null;
   const isStaff = p?.role === 'admin' || p?.role === 'manager';
@@ -55,7 +57,26 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
           )}
         </aside>
 
-        <section>
+        <section className="space-y-10">
+          <div>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-bold">{t.custom.my}</h2>
+              <Link href={`/${locale}/custom-order`} className="btn-outline px-4 py-2 text-sm">
+                <Camera className="size-4" /> {t.custom.cta}
+              </Link>
+            </div>
+            {customOrders?.length ? (
+              <div className="space-y-3">
+                {(customOrders as CustomOrder[]).map((o) => (
+                  <CustomOrderCard key={o.id} order={o} />
+                ))}
+              </div>
+            ) : (
+              <p className="card p-6 text-sm text-muted">{t.custom.subtitle}</p>
+            )}
+          </div>
+
+          <div>
           <h2 className="mb-4 text-lg font-bold">{t.account.orders}</h2>
           {!orders?.length ? (
             <div className="card p-10 text-center text-muted">
@@ -90,6 +111,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
               ))}
             </div>
           )}
+          </div>
         </section>
       </div>
     </div>

@@ -83,6 +83,7 @@ export function Header({ categories }: { categories: Category[] }) {
   };
 
   const infoLinks = [
+    { href: '/custom-order', label: t.custom.nav },
     { href: '/info/about', label: t.nav.about },
     { href: '/info/delivery', label: t.nav.delivery },
     { href: '/info/payment', label: t.nav.payment },
