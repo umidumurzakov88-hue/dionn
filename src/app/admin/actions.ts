@@ -309,7 +309,7 @@ export async function telegramSetWebhook(): Promise<Result> {
     allowed_updates: ['message'],
     drop_pending_updates: true,
   });
-  await tgCall('setMyCommands', { commands: [{ command: 'start', description: 'Начать / Boshlash / Start' }] });
+  await tgCall('setMyCommands', { commands: [{ command: 'start', description: 'Начать / Boşlaş / Start' }] });
   return res ? { ok: true, message: (await msg()).webhookConnected } : { ok: false, error: (await msg()).telegramRejected };
 }
 

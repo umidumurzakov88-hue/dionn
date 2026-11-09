@@ -1,6 +1,6 @@
 import type { Currency, Locale, Product, Variant } from './types';
 
-const SUM_LABEL: Record<Locale, string> = { ru: 'сум', uz: "so'm", en: 'UZS' };
+const SUM_LABEL: Record<Locale, string> = { ru: 'сум', uz: "sóm", en: 'UZS' };
 
 /** Format an amount stored in UZS in the selected display currency. */
 export function formatPrice(amountUzs: number, currency: Currency, usdRate: number, locale: Locale): string {

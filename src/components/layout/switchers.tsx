@@ -49,7 +49,7 @@ export function CurrencySwitch({ className = '' }: { className?: string }) {
           onClick={() => setCurrency(c)}
           className={`rounded-full px-2.5 py-1 transition ${c === cur ? 'bg-surface text-fg shadow-sm' : 'text-muted hover:text-fg'}`}
         >
-          {c === 'UZS' ? "so'm" : '$'}
+          {c === 'UZS' ? "sóm" : '$'}
         </button>
       ))}
     </div>

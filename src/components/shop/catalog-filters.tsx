@@ -104,7 +104,7 @@ export function CatalogFilters({ categories }: { categories: Category[] }) {
 
       <div>
         <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted">
-          {t.catalog.price}, {usd ? '$' : locale === 'en' ? 'UZS' : locale === 'uz' ? "so'm" : 'сум'}
+          {t.catalog.price}, {usd ? '$' : locale === 'en' ? 'UZS' : locale === 'uz' ? "sóm" : 'сум'}
         </h3>
         <div className="flex gap-2">
           <input inputMode="numeric" value={min} onChange={(e) => setMin(e.target.value.replace(/\D/g, ''))} placeholder={t.catalog.from} className="input py-2.5" />

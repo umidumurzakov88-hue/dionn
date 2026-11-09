@@ -1,10 +1,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { BadgePercent, ShieldCheck, Star, Truck, Wrench } from 'lucide-react';
-import { getBanners, getCategories, getProducts, getReviews } from '@/lib/data';
+import { getCategories, getProducts, getReviews } from '@/lib/data';
 import { getDict, isLocale } from '@/i18n/config';
 import { tr, type Locale } from '@/lib/types';
-import { HeroSlider } from '@/components/shop/hero-slider';
+import { HeroVideo } from '@/components/shop/hero-video';
 import { ProductRail } from '@/components/shop/product-rail';
 import { formatDate } from '@/lib/format';
 
@@ -16,8 +16,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const t = getDict(locale);
   const L = (p: string) => `/${locale}${p}`;
 
-  const [banners, categories, newest, hits, sale, reviews] = await Promise.all([
-    getBanners(),
+  const [categories, newest, hits, sale, reviews] = await Promise.all([
     getCategories(),
     getProducts({ isNew: true, sort: 'new', limit: 8 }),
     getProducts({ isHit: true, limit: 8 }),
@@ -36,7 +35,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   return (
     <>
       <h1 className="sr-only">{t.meta.title}</h1>
-      <HeroSlider banners={banners} />
+      <HeroVideo />
 
       <section className="container-x mt-6">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

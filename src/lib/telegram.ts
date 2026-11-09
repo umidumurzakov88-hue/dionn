@@ -98,10 +98,10 @@ const STATUS_TEXT: Record<Locale, Record<OrderStatus, string>> = {
   },
   uz: {
     new: '🆕 №{n} buyurtmangiz qabul qilindi.',
-    confirmed: "✅ №{n} buyurtmangiz tasdiqlandi. Uni jo'natishga tayyorlayapmiz.",
-    delivering: '🚚 №{n} buyurtmangiz yetkazib berishga topshirildi.',
-    delivered: '🎉 №{n} buyurtmangiz yetkazildi. Dionn ni tanlaganingiz uchun rahmat!',
-    cancelled: "❌ №{n} buyurtmangiz bekor qilindi. Agar bu xato bo'lsa — biz bilan bog'laning: +998 88 404 00 44",
+    confirmed: "✅ №{n} buyurtmangiz tasdiqlandi. Uni jónatişga tayyorlayapmiz.",
+    delivering: '🚚 №{n} buyurtmangiz yetkazib berişga topşirildi.',
+    delivered: '🎉 №{n} buyurtmangiz yetkazildi. Dionn ni tanlaganingiz uçun rahmat!',
+    cancelled: "❌ №{n} buyurtmangiz bekor qilindi. Agar bu xato bólsa — biz bilan boǵlaning: +998 88 404 00 44",
   },
   en: {
     new: '🆕 Your order #{n} has been received.',
@@ -158,7 +158,7 @@ export async function notifyNewCustomOrder(o: CustomOrderTg) {
 
 const QUOTE_TEXT: Record<Locale, { title: string; price: string; lead: string; open: string }> = {
   ru: { title: '💰 Мы оценили ваш индивидуальный заказ №{n}', price: 'Цена', lead: 'Срок', open: 'Откройте личный кабинет на сайте, чтобы принять или отказаться.' },
-  uz: { title: '💰 №{n} individual buyurtmangiz baholandi', price: 'Narx', lead: 'Muddat', open: 'Qabul qilish yoki rad etish uchun saytdagi shaxsiy kabinetni oching.' },
+  uz: { title: '💰 №{n} individual buyurtmangiz baholandi', price: 'Narx', lead: 'Muddat', open: 'Qabul qiliş yoki rad etiş uçun saytdagi şaxsiy kabinetni oçing.' },
   en: { title: '💰 We have priced your custom order #{n}', price: 'Price', lead: 'Lead time', open: 'Open your account on the website to accept or decline.' },
 };
 

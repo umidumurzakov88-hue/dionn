@@ -25,27 +25,27 @@ const langOf = (code?: string): Locale => (code === 'uz' ? 'uz' : code === 'en' 
 
 const WELCOME: Record<Locale, string> = {
   ru: '👋 Здравствуйте! Это бот мебельного магазина <b>Dionn — Art of Furniture</b>.\n\nЗдесь вы получаете коды для входа на сайт и уведомления о статусе заказов.\n\n📞 +998 88 404 00 44',
-  uz: "👋 Assalomu alaykum! Bu <b>Dionn — Art of Furniture</b> mebel do'koni boti.\n\nBu yerda saytga kirish kodlari va buyurtma holati haqida xabarnomalarni olasiz.\n\n📞 +998 88 404 00 44",
+  uz: "👋 Assalomu alaykum! Bu <b>Dionn — Art of Furniture</b> mebel dókoni boti.\n\nBu yerda saytga kiriş kodlari va buyurtma holati haqida xabarnomalarni olasiz.\n\n📞 +998 88 404 00 44",
   en: '👋 Hello! This is the bot of <b>Dionn — Art of Furniture</b> furniture store.\n\nHere you receive sign-in codes for the website and order status notifications.\n\n📞 +998 88 404 00 44',
 };
 const LINKED: Record<Locale, string> = {
   ru: '🔔 Уведомления по заказу №{n} подключены. Мы сообщим, когда статус изменится.',
-  uz: "🔔 №{n} buyurtma bo'yicha xabarnomalar ulandi. Holat o'zgarganda xabar beramiz.",
+  uz: "🔔 №{n} buyurtma bóyiça xabarnomalar ulandi. Holat ózgarganda xabar beramiz.",
   en: "🔔 Notifications for order #{n} are on. We'll let you know when the status changes.",
 };
 const NOT_FOUND: Record<Locale, string> = {
   ru: 'Ссылка устарела. Вернитесь на сайт и попробуйте ещё раз.',
-  uz: "Havola eskirgan. Saytga qayting va qaytadan urinib ko'ring.",
+  uz: "Havola eskirgan. Saytga qayting va qaytadan urinib kóring.",
   en: 'This link has expired. Go back to the website and try again.',
 };
 const LOGIN_CODE: Record<Locale, string> = {
   ru: '🔐 Ваш код для входа на сайт <b>Dionn</b>:\n\n<code>{code}</code>\n\nВведите его на сайте. Код действует 10 минут. Никому не сообщайте его.',
-  uz: "🔐 <b>Dionn</b> saytiga kirish kodingiz:\n\n<code>{code}</code>\n\nUni saytga kiriting. Kod 10 daqiqa amal qiladi. Hech kimga aytmang.",
+  uz: "🔐 <b>Dionn</b> saytiga kiriş kodingiz:\n\n<code>{code}</code>\n\nUni saytga kiriting. Kod 10 daqiqa amal qiladi. Heç kimga aytmang.",
   en: '🔐 Your sign-in code for <b>Dionn</b>:\n\n<code>{code}</code>\n\nEnter it on the website. The code is valid for 10 minutes. Do not share it with anyone.',
 };
 const LOGIN_WAIT: Record<Locale, string> = {
   ru: 'Код уже отправлен — проверьте сообщение выше. Новый код можно получить через минуту.',
-  uz: "Kod allaqachon yuborilgan — yuqoridagi xabarni tekshiring. Yangi kodni bir daqiqadan keyin olish mumkin.",
+  uz: "Kod allaqaçon yuborilgan — yuqoridagi xabarni tekşiring. Yangi kodni bir daqiqadan keyin oliş mumkin.",
   en: 'A code was already sent — check the message above. You can get a new one in a minute.',
 };
 
